@@ -1,0 +1,5 @@
+Lector de texto de fotos (OCR), incluido para que funcione sin internet ni servicios externos.
+- tesseract.min.js y worker.min.js: Tesseract.js 7.0.0 (Apache-2.0) https://github.com/naptha/tesseract.js
+- tesseract-core-lstm.wasm.js: Tesseract.js-core 7.0.0 (Apache-2.0) https://github.com/naptha/tesseract.js-core
+- lang/eng.traineddata.gz: datos de idioma Tesseract "best_int" (Apache-2.0) https://github.com/tesseract-ocr/tessdata_best
+El texto de la licencia Apache 2.0 está en LICENSE-Apache-2.0.txt.
