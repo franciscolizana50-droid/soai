@@ -1,0 +1,4 @@
+Tipografías incluidas en la carpeta para que la app funcione sin internet (versión "latin" de Fontsource).
+- IBM Plex Sans e IBM Plex Mono (IBM Corp.) — SIL Open Font License 1.1
+- Big Shoulders Display (The Big Shoulders Project Authors) — SIL Open Font License 1.1
+Cada licencia está en los archivos LICENSE-*.txt de esta carpeta.

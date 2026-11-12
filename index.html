@@ -1,0 +1,2381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#123D2E">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Seguimiento de ventas">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdnjs.cloudflare.com; worker-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://api.github.com; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Seguimiento Venta SOAI</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script src="vendor/xlsx.full.min.js"></script>
+<style>
+
+  /* Tipografías incluidas en la carpeta (la app no pide nada a Google) */
+  @font-face{font-family:'Big Shoulders Display'; font-style:normal; font-weight:600; font-display:swap; src:url(fonts/big-shoulders-display-600.woff2) format('woff2');}
+  @font-face{font-family:'Big Shoulders Display'; font-style:normal; font-weight:800; font-display:swap; src:url(fonts/big-shoulders-display-800.woff2) format('woff2');}
+  @font-face{font-family:'IBM Plex Sans'; font-style:normal; font-weight:400; font-display:swap; src:url(fonts/ibm-plex-sans-400.woff2) format('woff2');}
+  @font-face{font-family:'IBM Plex Sans'; font-style:normal; font-weight:500; font-display:swap; src:url(fonts/ibm-plex-sans-500.woff2) format('woff2');}
+  @font-face{font-family:'IBM Plex Sans'; font-style:normal; font-weight:600; font-display:swap; src:url(fonts/ibm-plex-sans-600.woff2) format('woff2');}
+  @font-face{font-family:'IBM Plex Sans'; font-style:normal; font-weight:700; font-display:swap; src:url(fonts/ibm-plex-sans-700.woff2) format('woff2');}
+  @font-face{font-family:'IBM Plex Mono'; font-style:normal; font-weight:400; font-display:swap; src:url(fonts/ibm-plex-mono-400.woff2) format('woff2');}
+  @font-face{font-family:'IBM Plex Mono'; font-style:normal; font-weight:500; font-display:swap; src:url(fonts/ibm-plex-mono-500.woff2) format('woff2');}
+  @font-face{font-family:'IBM Plex Mono'; font-style:normal; font-weight:600; font-display:swap; src:url(fonts/ibm-plex-mono-600.woff2) format('woff2');}
+  .btn[hidden]{display:none !important;}
+  .aviso-top{background:var(--gold-soft); border:1px solid #d9b56a; color:#5b3f0c; border-radius:8px; padding:10px 12px; margin-bottom:10px; font-size:13px; line-height:1.45;}
+  .aviso-top.err{background:var(--warn-soft); border-color:#e0a99b; color:#8a3523;}
+  :root{
+    --paper:#F3F6F1; --paper-alt:#E7EEE3; --card:#FFFFFF;
+    --ink:#16241D; --ink-soft:#51625A; --line:#CBD6C6;
+    --brand:#1F6F54; --brand-dark:#123D2E; --brand-soft:#DCEAE3;
+    --gold:#B9822C; --gold-soft:#F1DDB3; --warn:#B5533C; --warn-soft:#F3DED8;
+    --azul:#3B6EA5; --azul-soft:#DCE6F1;
+    --font-display:'Big Shoulders Display', sans-serif;
+    --font-body:'IBM Plex Sans', sans-serif;
+    --font-mono:'IBM Plex Mono', monospace;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper); color:var(--ink); font-family:var(--font-body); font-size:14px; line-height:1.4; padding:28px;}
+  .wrap{max-width:1500px; margin:0 auto;}
+
+  .topbar{display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap; border-bottom:3px solid var(--ink); padding-bottom:16px; margin-bottom:20px;}
+  .brand-block h1{font-family:var(--font-display); font-weight:800; font-size:30px; line-height:1.02; margin:6px 0 4px 0; letter-spacing:.01em; max-width:600px;}
+  .brand-block input.titulo-editable{
+    font-family:var(--font-display); font-weight:800; font-size:30px; line-height:1.02;
+    margin:6px 0 4px 0; letter-spacing:.01em; max-width:600px; width:100%;
+    border:none; background:transparent; padding:2px 0; color:var(--ink);
+  }
+  .brand-block input.titulo-editable:hover{outline:1px dashed var(--line);}
+  .brand-block input.titulo-editable:focus{outline:1px dashed var(--brand); background:#fff;}
+  .brand-block input.store-name{font-family:var(--font-body); font-size:13px; color:var(--ink-soft); border:none; background:transparent; padding:0; width:280px;}
+  .brand-block input.store-name:focus{outline:1px dashed var(--brand);}
+
+  .period-picker{display:flex; gap:10px; align-items:flex-end;}
+  .field{display:flex; flex-direction:column; gap:3px;}
+  .field label{font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); font-weight:600;}
+  select, input[type=number], input[type=text]{
+    font-family:var(--font-mono); font-size:14px; color:var(--ink);
+    border:1.5px solid var(--line); border-radius:6px; padding:7px 9px; background:var(--card);
+  }
+  select:focus, input:focus{outline:2px solid var(--brand); outline-offset:1px; border-color:var(--brand);}
+
+  .panels{display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:16px; margin-bottom:22px;}
+  @media (max-width:1000px){ .panels{grid-template-columns:1fr;} }
+  .panel{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px;}
+  .panel h2{font-family:var(--font-display); font-weight:700; font-size:18px; margin:0 0 10px 0; letter-spacing:.02em; color:var(--brand-dark);}
+  .panel .hint{font-size:11.5px; color:var(--ink-soft); margin:0 0 10px 0;}
+
+  .vendedora-row{display:flex; gap:6px; align-items:center; margin-bottom:6px;}
+  .vendedora-row input[type=text]{flex:1; min-width:0;}
+  .vendedora-row input[type=number]{width:90px;}
+  .swatch{width:10px; height:10px; border-radius:50%; flex:none;}
+  .btn-x{border:none; background:none; color:var(--warn); font-size:16px; cursor:pointer; line-height:1; width:22px; height:22px; border-radius:5px;}
+  .btn-x:hover{background:var(--warn-soft);}
+  .btn{font-family:var(--font-body); font-weight:600; font-size:12.5px; cursor:pointer; border-radius:7px; padding:8px 14px; border:1.5px solid var(--brand); background:var(--brand); color:#fff;}
+  .btn:hover{background:var(--brand-dark); border-color:var(--brand-dark);}
+  .btn.secondary{background:#fff; color:var(--brand);}
+  .btn.secondary:hover{background:var(--brand-soft);}
+  .btn.block{width:100%; margin-top:6px;}
+
+  .tramo-row{display:grid; grid-template-columns:auto 1fr 1fr; gap:6px 8px; align-items:center; margin-bottom:6px; font-family:var(--font-mono); font-size:12.5px;}
+  .tramo-row .lbl{font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); font-weight:600; text-align:right;}
+  .tramo-row input{width:100%;}
+  .tramo-row .suf{color:var(--ink-soft); font-size:11px;}
+  .iva-row{display:flex; align-items:center; gap:8px; margin-top:10px; padding-top:10px; border-top:1px dashed var(--line); font-family:var(--font-mono); font-size:12.5px;}
+  .iva-row input{width:70px;}
+
+  .file-row{margin-bottom:12px;}
+  .file-input{display:none;}
+  .file-label{display:inline-block; font-family:var(--font-body); font-weight:600; font-size:12.5px; border:1.5px dashed var(--brand); color:var(--brand); border-radius:7px; padding:8px 14px; cursor:pointer; width:100%; text-align:center; box-sizing:border-box;}
+  .file-label:hover{background:var(--brand-soft);}
+  .estado{font-size:11.5px; margin-top:7px; padding:7px 9px; border-radius:6px; display:none;}
+  .estado.ok{display:block; background:var(--brand-soft); color:var(--brand-dark);}
+  .estado.err{display:block; background:var(--warn-soft); color:var(--warn);}
+
+  .ledger-shell{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); overflow-x:auto; margin-bottom:22px;}
+  table.ledger{border-collapse:collapse; width:100%; min-width:760px;}
+  table.ledger caption{text-align:left; font-family:var(--font-display); font-weight:700; font-size:16px; padding:14px 16px 6px 16px; color:var(--brand-dark);}
+  table.ledger th, table.ledger td{border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:6px 8px; text-align:right; font-family:var(--font-mono); font-size:12.5px; white-space:nowrap;}
+  table.ledger th{background:var(--brand-dark); color:#fff; font-family:var(--font-body); font-weight:600; text-align:center;}
+  table.ledger thead tr.sub th{background:var(--brand); font-size:10px; text-transform:uppercase; letter-spacing:.03em;}
+  table.ledger th.grp-empresa{background:var(--azul);}
+  table.ledger td.dia, table.ledger th.dia{text-align:center; font-weight:600;}
+  table.ledger td.dia, table.ledger td.fecha, table.ledger td.meta, table.ledger th.dia, table.ledger th.fecha, table.ledger th.meta{position:sticky; background:var(--card); z-index:2;}
+  table.ledger th.dia, table.ledger th.fecha, table.ledger th.meta{background:var(--brand-dark); z-index:3;}
+  table.ledger td.dia, th.dia{left:0; width:38px;}
+  table.ledger td.fecha, th.fecha{left:38px; width:76px; text-align:center;}
+  table.ledger td.meta, th.meta{left:114px; width:104px; box-shadow:2px 0 0 var(--line);}
+  table.ledger tr.fila-semana-alt td.dia, table.ledger tr.fila-semana-alt td.fecha, table.ledger tr.fila-semana-alt td.meta{background:var(--paper-alt);}
+  table.ledger input{width:100%; border:1px solid transparent; background:transparent; text-align:right; font-family:var(--font-mono); font-size:12.5px; color:var(--ink); padding:2px 3px; border-radius:4px;}
+  table.ledger input:hover{border-color:var(--line);}
+  table.ledger input:focus{border-color:var(--brand); background:#fff; outline:none;}
+  table.ledger td.neta, table.ledger td.empresa-neta{color:var(--ink-soft); font-style:italic;}
+  table.ledger tfoot td{background:var(--paper-alt); font-weight:700; border-top:2px solid var(--ink);}
+  .vendor-head{border-left:3px solid var(--vc, var(--brand));}
+  .tier-100{background:rgba(31,111,84,.14);}
+  .tier-110{background:rgba(31,111,84,.26);}
+  .tier-120{background:rgba(185,130,44,.30); font-weight:700; color:var(--brand-dark);}
+  .tier-bajo{background:rgba(181,83,60,.09);}
+
+  .resumen-title{font-family:var(--font-display); font-weight:700; font-size:22px; margin:0 0 12px 0; color:var(--brand-dark);}
+  .empresa-card{background:var(--card); border:1px solid var(--line); border-top:5px solid var(--azul); border-radius:var(--radius); padding:16px 18px; margin-bottom:18px;}
+  .empresa-card .metrics{display:grid; grid-template-columns:repeat(auto-fit, minmax(170px,1fr)); gap:14px;}
+  .empresa-card .metric-big .num{font-family:var(--font-display); font-weight:800; font-size:24px; color:var(--brand-dark);}
+  .empresa-card .metric-big .lbl{font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); font-weight:600;}
+  .empresa-card .tramos-dist{display:flex; gap:14px; margin-top:10px; font-family:var(--font-mono); font-size:12.5px;}
+  .empresa-card .tramos-dist span.dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px;}
+
+  .scoreboard{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:14px; margin-bottom:26px;}
+  .score-card{background:var(--card); border:1px solid var(--line); border-top:5px solid var(--vc, var(--brand)); border-radius:var(--radius); padding:14px 16px;}
+  .score-card .nombre{font-family:var(--font-display); font-weight:700; font-size:20px;}
+  .score-card .id{font-family:var(--font-mono); font-size:11px; color:var(--ink-soft); margin-bottom:8px;}
+  .score-card .metric{display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:13px; margin:3px 0;}
+  .score-card .metric .lbl{color:var(--ink-soft);}
+
+  .bonos-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:14px; margin-bottom:30px;}
+  .bono-card{
+    background:var(--card); border:1px solid var(--line); border-top:5px solid var(--vc, var(--gold));
+    border-radius:var(--radius); padding:14px 16px; break-inside:avoid;
+  }
+  .bono-card h3{margin:0 0 8px 0; font-family:var(--font-display); font-weight:700; font-size:18px;}
+  .bono-card h3 .conteo{font-size:11px; font-weight:400; color:var(--ink-soft); font-family:var(--font-body);}
+  .bono-card table{width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:12px;}
+  .bono-card th, .bono-card td{padding:4px 6px; text-align:right; border-bottom:1px solid var(--line);}
+  .bono-card th{color:var(--ink-soft); font-weight:600; font-size:10px; text-transform:uppercase; letter-spacing:.03em;}
+  .bono-card th:first-child, .bono-card td:first-child{text-align:left;}
+  .bono-card .vacio{font-size:12px; color:var(--ink-soft); font-style:italic;}
+
+  .sinasignar-shell{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); overflow-x:auto; margin-bottom:30px;}
+  table.sinasignar{border-collapse:collapse; width:100%;}
+  table.sinasignar th, table.sinasignar td{border-bottom:1px solid var(--line); padding:7px 10px; text-align:right; font-family:var(--font-mono); font-size:12.5px;}
+  table.sinasignar th{background:var(--warn); color:#fff; font-family:var(--font-body); font-weight:600; text-align:center; font-size:11px;}
+  table.sinasignar td:first-child, table.sinasignar th:first-child{text-align:left;}
+  table.sinasignar input{width:110px; border:1px solid var(--line); background:#fff; text-align:right; font-family:var(--font-mono); font-size:12.5px; padding:3px 5px; border-radius:4px;}
+  table.sinasignar input:focus{border-color:var(--brand); outline:none;}
+  table.sinasignar .btn-mini{font-family:var(--font-body); font-size:11px; font-weight:600; border:1px solid var(--line); background:#fff; border-radius:5px; padding:4px 8px; cursor:pointer; margin-left:4px;}
+  table.sinasignar .btn-mini:hover{background:var(--paper-alt);}
+  table.sinasignar .btn-mini.asignar{border-color:var(--brand); color:var(--brand);}
+  table.sinasignar .btn-mini.quitar{border-color:var(--warn); color:var(--warn);}
+  .sinasignar-vacio{padding:14px 16px; font-size:12.5px; color:var(--ink-soft); font-style:italic;}
+
+  .actions{display:flex; gap:10px; justify-content:flex-end; margin-bottom:40px; flex-wrap:wrap;}
+  .toast{position:fixed; bottom:20px; right:20px; background:var(--ink); color:#fff; font-size:12px; padding:9px 14px; border-radius:7px; opacity:0; transform:translateY(6px); transition:.25s; font-family:var(--font-mono); pointer-events:none;}
+  .toast.show{opacity:1; transform:translateY(0);}
+
+
+  /* ---------- Barra de herramientas, filtros y desplegables ---------- */
+  .btn.small{padding:5px 10px; font-size:11.5px;}
+  .toolbar{position:sticky; top:0; z-index:40; display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; background:var(--paper); padding:10px 0; margin:-8px 0 10px 0; border-bottom:1px solid var(--line);}
+  .toolbar .btn{display:inline-flex; align-items:center; gap:8px; line-height:1.2; box-sizing:border-box;}
+  .tb-group{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+  .tb-sep{width:1px; height:26px; background:var(--line);}
+  .tb-auto{margin-left:auto; font-family:var(--font-mono); font-size:11px; color:var(--ink-soft);}
+  .tb-titulo{max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:400; opacity:.9; border-left:1px solid rgba(255,255,255,.45); padding-left:8px;}
+  .estados{margin-bottom:12px;}
+  .estados .estado{margin-top:6px;}
+
+  .filtros{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:flex-end; background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:10px 14px; margin-bottom:14px;}
+  .filtros .f-titulo{font-family:var(--font-display); font-weight:700; font-size:16px; color:var(--brand-dark); align-self:center;}
+  .filtros input[type=number]{width:84px;}
+  .filtros select{min-width:170px;}
+  .f-cuenta{font-family:var(--font-mono); font-size:11.5px; color:var(--ink-soft); align-self:center; margin-left:auto;}
+
+  details.config-det{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); margin-bottom:16px;}
+  details.config-det>summary{cursor:pointer; padding:11px 16px; font-family:var(--font-display); font-weight:700; font-size:16px; color:var(--brand-dark); list-style:none;}
+  details.config-det>summary::-webkit-details-marker{display:none;}
+  details.config-det>summary::before{content:'▸ ';}
+  details.config-det[open]>summary::before{content:'▾ ';}
+  details.config-det .panels{padding:0 16px 16px 16px; margin-bottom:0;}
+  .panels.dos{grid-template-columns:1fr 1fr;}
+  @media (max-width:1000px){ .panels.dos{grid-template-columns:1fr;} }
+
+  .det-head{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:10px;}
+  .det-head .resumen-title{margin:0;}
+  .vend-det{background:var(--card); border:1px solid var(--line); border-left:5px solid var(--vc, var(--brand)); border-radius:var(--radius); margin-bottom:10px; overflow:hidden;}
+  .vend-det>summary{cursor:pointer; padding:11px 16px; display:flex; flex-wrap:wrap; gap:6px 16px; align-items:center; list-style:none;}
+  .vend-det>summary::-webkit-details-marker{display:none;}
+  .vend-det>summary::before{content:'▸'; color:var(--ink-soft);}
+  .vend-det[open]>summary::before{content:'▾';}
+  .vend-det .vn{font-family:var(--font-display); font-weight:700; font-size:19px;}
+  .vend-det .vid{font-family:var(--font-mono); font-size:11px; color:var(--ink-soft);}
+  .vend-det .vsum{margin-left:auto; font-family:var(--font-mono); font-size:12px; color:var(--ink-soft); display:flex; gap:14px; flex-wrap:wrap;}
+  .vend-det .vsum b{color:var(--ink);}
+  .det-body{padding:0 12px 12px 12px; overflow-x:auto;}
+  table.det-tabla{border-collapse:collapse; width:100%; min-width:600px;}
+  table.det-tabla th, table.det-tabla td{border-bottom:1px solid var(--line); padding:5px 8px; text-align:right; font-family:var(--font-mono); font-size:12.5px;}
+  table.det-tabla th{background:var(--paper-alt); color:var(--ink-soft); font-family:var(--font-body); font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; text-align:center;}
+  table.det-tabla td:nth-child(1), table.det-tabla td:nth-child(2){text-align:center;}
+  table.det-tabla input{width:120px; text-align:right; border:1px solid var(--line); border-radius:4px; font-family:var(--font-mono); font-size:12.5px; padding:3px 5px; background:#fff;}
+  table.det-tabla input:focus{border-color:var(--brand); outline:none;}
+
+
+  /* ---------- Pestañas móviles, hoy, modal de respaldos y adaptación a teléfono ---------- */
+  .tb-menu{display:none;}
+  .vistas{display:none;}
+  .hoy-fila{display:flex; justify-content:space-between; gap:10px; font-family:var(--font-mono); font-size:13px; padding:4px 0; border-bottom:1px dotted var(--line);}
+  .hoy-fila:last-child{border-bottom:none;}
+  .hoy-sin-meta{font-size:12.5px; color:var(--warn); margin-top:6px;}
+
+  .modal-back{position:fixed; inset:0; background:rgba(18,32,26,.55); z-index:100; display:flex; align-items:center; justify-content:center; padding:14px;}
+  .modal-back[hidden]{display:none;}
+  .modal{background:var(--card); border-radius:var(--radius); width:100%; max-width:660px; max-height:92vh; overflow:auto; box-shadow:0 12px 40px rgba(0,0,0,.3);}
+  .modal-head{display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--card); z-index:2;}
+  .modal-head h2{margin:0; font-family:var(--font-display); font-size:22px; color:var(--brand-dark);}
+  .modal-head .btn-x{font-size:20px; width:34px; height:34px;}
+  .modal-body{padding:4px 18px 18px;}
+  .mr-sec{padding:12px 0; border-bottom:1px dashed var(--line);}
+  .mr-sec h3{margin:0 0 6px; font-family:var(--font-display); font-size:17px; color:var(--brand-dark);}
+  .mr-sec input[type=text], .mr-sec input[type=password]{width:100%;}
+  .mr-sec .hint{font-size:12px; color:var(--ink-soft); margin:0 0 8px;}
+  .mr-fila{display:flex; flex-wrap:wrap; gap:8px;}
+  .mr-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; margin-bottom:8px;}
+  .mr-grid .full{grid-column:1 / -1;}
+  .mr-check{display:flex; gap:8px; align-items:flex-start; font-size:12px; color:var(--ink-soft); margin:4px 0 10px;}
+  .mr-check input{margin-top:2px;}
+  #mrEstado{margin-top:12px;}
+  .btn[disabled]{opacity:.55; cursor:wait;}
+
+  @media (max-width:760px){
+    body{padding:10px; padding-bottom:max(10px, env(safe-area-inset-bottom));}
+    .topbar{gap:10px; padding-bottom:10px; margin-bottom:10px;}
+    .brand-block{width:100%;}
+    .brand-block h1, .brand-block input.titulo-editable{font-size:22px;}
+    .brand-block input.store-name{width:100%;}
+    .period-picker{width:100%; flex-wrap:wrap;}
+    .period-picker .field{flex:1 1 38%;}
+    .period-picker .field select, .period-picker .field input{width:100% !important;}
+    input, select{font-size:16px;}
+    .btn{padding:10px 14px; font-size:13.5px;}
+    .btn.small{padding:7px 11px; font-size:12.5px;}
+    .tb-menu{display:inline-flex;}
+    .toolbar{gap:6px;}
+    .toolbar .tb-group, .toolbar .tb-sep{display:none;}
+    .toolbar.abierto{padding-bottom:12px;}
+    .toolbar.abierto .tb-group{display:flex; width:100%;}
+    .toolbar.abierto .tb-group .btn{flex:1 1 45%; justify-content:center;}
+    .tb-titulo{max-width:150px;}
+    .tb-auto{margin-left:auto; font-size:10.5px;}
+    .vistas{display:flex; gap:6px; margin-bottom:12px;}
+    .vistas button{flex:1; border:1.5px solid var(--brand); background:#fff; color:var(--brand); font-weight:600; font-family:var(--font-body); font-size:13.5px; padding:10px 4px; border-radius:8px; cursor:pointer;}
+    .vistas button.activa{background:var(--brand); color:#fff;}
+    body[data-vista="dias"] #vistaVend, body[data-vista="dias"] #vistaResumen,
+    body[data-vista="vend"] #vistaDias, body[data-vista="vend"] #vistaResumen,
+    body[data-vista="resumen"] #vistaDias, body[data-vista="resumen"] #vistaVend{display:none;}
+    body[data-vista="resumen"] .filtros{display:none;}
+    .filtros{padding:10px; gap:8px 10px;}
+    .filtros .f-titulo{width:100%;}
+    .filtros .field{flex:1 1 40%;}
+    .filtros select{min-width:0; width:100%;}
+    .filtros input[type=number]{width:100%;}
+    .f-cuenta{margin-left:0; width:100%;}
+    details.config-det .panels{padding:0 10px 12px;}
+    table.ledger td.fecha, table.ledger th.fecha, table.ledger td.meta, table.ledger th.meta{position:static; box-shadow:none;}
+    table.ledger td.dia, table.ledger th.dia{width:32px;}
+    table.ledger input{font-size:14px; min-width:86px;}
+    table.det-tabla{min-width:0;}
+    table.det-tabla th:nth-child(3), table.det-tabla td:nth-child(3), table.det-tabla th:nth-child(6), table.det-tabla td:nth-child(6){display:none;}
+    table.det-tabla input{width:100%; min-width:96px; font-size:16px;}
+    .vend-det>summary{padding:10px 12px;}
+    .vend-det .vsum{margin-left:0; width:100%;}
+    .empresa-card{padding:12px;}
+    .scoreboard, .bonos-grid{grid-template-columns:1fr;}
+    .modal-back{padding:0; align-items:flex-end;}
+    .modal{max-height:96vh; border-radius:14px 14px 0 0;}
+    .mr-grid{grid-template-columns:1fr;}
+  }
+
+
+  /* ---------- Ingreso de venta de un día ---------- */
+  .dr-cab, .dr-row{display:grid; grid-template-columns:96px 1fr 132px 32px; gap:6px 8px; align-items:center;}
+  .dr-cab{font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); font-weight:600; margin:10px 0 4px;}
+  .dr-row{margin-bottom:6px;}
+  .dr-row input{width:100%;}
+  .dr-row input.dr-monto{text-align:right;}
+  .dr-nom{font-size:12.5px; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .dr-nom.sin{color:var(--warn);}
+  .dr-resumen{background:var(--paper-alt); border-radius:8px; padding:10px 12px; font-family:var(--font-mono); font-size:13px; margin-top:12px;}
+  .dr-resumen .fila{display:flex; justify-content:space-between; gap:10px; padding:2px 0;}
+  .dr-msg{font-size:12.5px; padding:8px 10px; border-radius:6px; margin-top:8px;}
+  .dr-msg.ok{background:var(--brand-soft); color:var(--brand-dark);}
+  .dr-msg.aviso{background:var(--gold-soft); color:#6b4a10;}
+  .dr-msg.err{background:var(--warn-soft); color:var(--warn);}
+  #drPegar{width:100%; min-height:90px; font-family:var(--font-mono); font-size:12.5px; border:1.5px solid var(--line); border-radius:6px; padding:8px; box-sizing:border-box;}
+  details.dr-pegar{margin-top:8px;}
+  details.dr-pegar summary{cursor:pointer; font-size:12.5px; color:var(--brand); font-weight:600;}
+  @media (max-width:760px){ .dr-cab, .dr-row{grid-template-columns:84px 1fr 108px 30px;} }
+  .mr-check[hidden]{display:none;}
+  .dr-foto{border:1.5px dashed var(--brand); border-radius:8px; padding:10px 12px; margin:6px 0 10px;}
+  .dr-foto h4{margin:0 0 4px; font-family:var(--font-display); font-size:15px; color:var(--brand-dark);}
+  .dr-foto .hint{margin:0 0 8px;}
+  #drFotoPrev{display:block; max-width:100%; max-height:130px; margin-top:8px; border:1px solid var(--line); border-radius:6px; cursor:zoom-in;}
+  #drFotoPrev.zoom{max-height:none; cursor:zoom-out;}
+  #drFotoPrev[hidden]{display:none;}
+  #drFotoEstado[hidden]{display:none;}
+
+  @media print{
+    #vistaDias, #vistaVend, #vistaResumen{display:block !important;}
+    body{padding:0; background:#fff;}
+    .no-print{display:none !important;}
+    .panels{display:none !important;}
+    .ledger-shell{border:none; overflow:visible;}
+    table.ledger{min-width:0; width:100%;}
+    table.ledger th{background:#e9e9e9 !important; color:#111 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    table.ledger thead{display:table-header-group;}
+    table.ledger input{border:none; color:#111;}
+    .titulo-editable{border:none !important; outline:none !important; color:#111 !important;}
+    .tier-100, .tier-110, .tier-120, .tier-bajo{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    .topbar{border-bottom:2px solid #000;}
+    .score-card, .empresa-card{break-inside:avoid;}
+    .bono-card{break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="topbar">
+    <div class="brand-block">
+      <input class="titulo-editable" id="tituloApp" type="text" value="Seguimiento de Venta y Bonos SOAI">
+      <input class="store-name" id="nombreTienda" type="text" placeholder="Nombre del local (opcional)">
+    </div>
+    <div class="period-picker no-print">
+      <div class="field"><label for="selMes">Mes</label><select id="selMes"></select></div>
+      <div class="field"><label for="selAnio">Año</label><input id="selAnio" type="number" value="2026" style="width:90px;"></div>
+      <button class="btn secondary small" id="btnMesActual" type="button" title="Ir al mes en curso">Mes actual</button>
+    </div>
+  </header>
+
+  <div id="avisos" class="no-print"></div>
+
+  <div class="toolbar no-print" id="toolbar">
+    <button class="btn small tb-menu" id="btnMenu" type="button">☰ Menú</button>
+    <div class="tb-group">
+      <label class="btn" for="inputVenta" title="Importar ventas diarias (uno o varios días)"><span>Importar venta diaria</span><span class="tb-titulo" id="lblTituloImport"></span></label>
+      <input class="file-input" id="inputVenta" type="file" accept=".xls,.xlsx,.ods,.csv">
+      <label class="btn secondary" for="inputMetas">Importar metas</label>
+      <input class="file-input" id="inputMetas" type="file" accept=".ods,.xlsx,.xls,.csv">
+      <button class="btn secondary" id="btnIngresarDia" type="button" title="Escribir o pegar la venta de un día (por ejemplo desde una captura del reporte)">Ingresar venta de un día</button>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-group">
+      <button class="btn secondary" id="btnRespaldos" type="button" title="Guardar o cargar respaldos: archivo (cifrado o no) y GitHub">Respaldos (archivo / GitHub)</button>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-group">
+      <button class="btn secondary" id="btnExcel" type="button">Descargar Excel</button>
+      <button class="btn" id="btnImprimir" type="button">Imprimir / PDF</button>
+      <button class="btn secondary" id="btnInstalar" type="button" hidden title="Instalar en este dispositivo para usarla sin conexión">Instalar app</button>
+    </div>
+    <span class="tb-auto" id="tbAuto">✓ Se guarda automáticamente</span>
+  </div>
+  <div class="estados no-print">
+    <div class="estado" id="estadoVenta"></div>
+    <div class="estado" id="estadoMetas"></div>
+  </div>
+
+  <nav class="vistas no-print" id="vistas">
+    <button type="button" data-vista="resumen">Resumen</button>
+    <button type="button" data-vista="vend">Vendedoras</button>
+    <button type="button" data-vista="dias">Días</button>
+  </nav>
+
+  <div class="filtros no-print">
+    <span class="f-titulo">Filtros</span>
+    <div class="field"><label for="fVend">Vendedora</label><select id="fVend"></select></div>
+    <div class="field"><label for="fDesde">Desde día</label><input id="fDesde" type="number" min="1" max="31" placeholder="1"></div>
+    <div class="field"><label for="fHasta">Hasta día</label><input id="fHasta" type="number" min="1" max="31" placeholder="31"></div>
+    <div class="field"><label for="fEstado">Estado del día</label>
+      <select id="fEstado">
+        <option value="todos">Todos los días</option>
+        <option value="conventa">Con venta cargada</option>
+        <option value="sinventa">Sin venta cargada</option>
+        <option value="sinmeta">Sin meta cargada</option>
+        <option value="bajo">Bajo meta (sin tramo)</option>
+        <option value="contramo">Con algún tramo alcanzado</option>
+        <option value="t1">Solo tramo 1</option>
+        <option value="t2">Solo tramo 2</option>
+        <option value="t3">Solo tramo 3</option>
+      </select>
+    </div>
+    <button class="btn secondary small" id="btnLimpiarFiltros" type="button">Limpiar filtros</button>
+    <span class="f-cuenta" id="fCuenta"></span>
+  </div>
+
+  <details class="config-det no-print">
+    <summary>Configuración: vendedoras, tramos de bono e IVA</summary>
+    <section class="panels dos">
+      <div class="panel">
+        <h2>Vendedoras</h2>
+        <p class="hint">Nombre e ID. Agrega o quita las que necesites.</p>
+        <div id="listaVendedoras"></div>
+        <button class="btn secondary block" id="btnAgregarVendedora" type="button">+ Agregar vendedora</button>
+      </div>
+      <div class="panel">
+        <h2>Tramos de bono (sobre la meta total)</h2>
+        <p class="hint">La meta es la venta neta de <b>todas</b> las vendedoras sumada. Al llegar a un tramo, cada vendedora gana ese % de <b>su propia</b> venta neta. No es acumulable: se paga solo el tramo más alto alcanzado.</p>
+        <div id="listaTramos"></div>
+        <div class="iva-row">
+          <span>IVA a descontar de la venta:</span>
+          <input type="number" id="inputIva" value="19" step="0.5"><span class="suf">%</span>
+        </div>
+      </div>
+    </section>
+    <div class="panel" style="margin:0 16px 16px;">
+      <h2>Instalar y usar sin conexión</h2>
+      <p class="hint" style="margin-bottom:6px;">Una vez abierta con internet la primera vez, la app queda guardada en el dispositivo y funciona sin conexión (ventas, metas, filtros, fotos, Excel y respaldos por archivo). Solo el respaldo en GitHub necesita internet.</p>
+      <p class="hint" style="margin-bottom:6px;"><b>Android (Chrome):</b> toca <b>Instalar app</b> en la barra, o el menú ⋮ → <i>Instalar aplicación</i>.<br><b>iPhone (Safari):</b> botón Compartir → <i>Agregar a pantalla de inicio</i>. <b>Instálala antes de cargar datos y úsala siempre desde su ícono</b>: en iPhone la app instalada guarda sus datos aparte de Safari.</p>
+      <p class="hint" style="margin:0;">Los datos viven en este dispositivo: haz un respaldo de vez en cuando (Respaldos).</p>
+    </div>
+  </details>
+
+  <div id="vistaDias">
+  <div class="ledger-shell">
+    <table class="ledger" id="tablaLedger">
+      <caption id="captionLedger"></caption>
+      <thead id="theadLedger"></thead>
+      <tbody id="tbodyLedger"></tbody>
+      <tfoot id="tfootLedger"></tfoot>
+    </table>
+  </div>
+  </div>
+
+  <div id="vistaVend">
+  <div class="det-head no-print">
+    <h2 class="resumen-title">Detalle por vendedora</h2>
+    <div>
+      <button class="btn secondary small" id="btnExpandir" type="button">Expandir todo</button>
+      <button class="btn secondary small" id="btnContraer" type="button">Contraer todo</button>
+    </div>
+  </div>
+  <div id="detalleVendedoras" class="no-print" style="margin-bottom:26px;"></div>
+  </div>
+
+  <div id="vistaResumen">
+  <div id="hoyCard"></div>
+  <h2 class="resumen-title">Resumen del mes</h2>
+  <div class="empresa-card" id="empresaCard"></div>
+  <div class="scoreboard" id="scoreboard"></div>
+
+  <h2 class="resumen-title">Días con bono</h2>
+  <div class="bonos-grid" id="bonosDetalle"></div>
+
+  <h2 class="resumen-title no-print">Ventas sin asignar</h2>
+  <p class="hint no-print" style="margin:-6px 0 12px 0;">Ventas importadas con un ID que todavía no es una vendedora agregada. Ya cuentan para la meta compartida — puedes corregir el monto, quitarlas, o agregarlas directo como vendedora.</p>
+  <div id="sinAsignarPanel" class="no-print"></div>
+  </div>
+
+</div>
+
+<div class="modal-back no-print" id="modalResp" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mrTitulo">
+    <div class="modal-head"><h2 id="mrTitulo">Respaldos</h2><button class="btn-x" id="mrCerrar" type="button" aria-label="Cerrar">✕</button></div>
+    <div class="modal-body">
+
+      <section class="mr-sec">
+        <h3>Contraseña de cifrado</h3>
+        <p class="hint">Cifra y descifra tus respaldos (AES-256). No se guarda en ningún lugar: si la olvidas, un respaldo cifrado no se puede recuperar.</p>
+        <input type="password" id="mrPass" autocomplete="new-password" placeholder="Contraseña (mínimo 8 caracteres)">
+      </section>
+
+      <section class="mr-sec">
+        <h3>Archivo</h3>
+        <p class="hint">Descarga un respaldo a este dispositivo o carga uno (cifrado o sin cifrar) para restaurarlo.</p>
+        <div class="mr-fila">
+          <button class="btn" id="mrBajarCifrado" type="button">Descargar cifrado</button>
+          <button class="btn secondary" id="mrBajarPlano" type="button">Descargar sin cifrar</button>
+          <label class="btn secondary" for="mrArchivo">Cargar respaldo…</label>
+          <input class="file-input" id="mrArchivo" type="file" accept=".json,application/json">
+        </div>
+      </section>
+
+      <section class="mr-sec">
+        <h3>GitHub (nube)</h3>
+        <p class="hint">Sube el respaldo ya cifrado a un repositorio <b>privado</b>. Usa un token de acceso fino con permiso <b>Contents: Read and write</b> solo sobre ese repositorio.</p>
+        <div class="mr-grid">
+          <div class="field"><label for="ghOwner">Usuario u organización</label><input type="text" id="ghOwner" autocomplete="off" placeholder="mi-usuario"></div>
+          <div class="field"><label for="ghRepo">Repositorio</label><input type="text" id="ghRepo" autocomplete="off" placeholder="respaldos-ventas"></div>
+          <div class="field"><label for="ghRama">Rama</label><input type="text" id="ghRama" autocomplete="off" placeholder="main"></div>
+          <div class="field"><label for="ghRuta">Archivo en el repositorio</label><input type="text" id="ghRuta" autocomplete="off" placeholder="respaldos/respaldo-seguimiento.enc.json"></div>
+          <div class="field full"><label for="ghToken">Token de acceso</label><input type="password" id="ghToken" autocomplete="off" placeholder="github_pat_..."></div>
+        </div>
+        <label class="mr-check"><input type="checkbox" id="ghRecordar"><span>Recordar los datos de GitHub en este dispositivo (el token queda guardado en el navegador; úsalo solo en tu teléfono o equipo personal).</span></label>
+        <div class="mr-fila">
+          <button class="btn" id="ghSubir" type="button">Subir respaldo cifrado</button>
+          <button class="btn secondary" id="ghBajar" type="button">Descargar y restaurar</button>
+        </div>
+      </section>
+
+      <div class="estado" id="mrEstado"></div>
+    </div>
+  </div>
+</div>
+<div class="modal-back no-print" id="modalDia" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="drTitulo">
+    <div class="modal-head"><h2 id="drTitulo">Ingresar venta de un día</h2><button class="btn-x" id="drCerrar" type="button" aria-label="Cerrar">✕</button></div>
+    <div class="modal-body">
+      <section class="mr-sec">
+        <div class="mr-grid">
+          <div class="field"><label for="drFecha">Día</label><input type="date" id="drFecha"></div>
+          <div class="field"><label for="drTotalRep">Total del reporte con IVA (opcional)</label><input type="text" id="drTotalRep" inputmode="numeric" autocomplete="off" placeholder="Ej: 365.514"></div>
+        </div>
+        <p class="hint" id="drNota">Elige el día y anota, por cada vendedor, el <b>Total con IVA</b> del reporte. Si escribes el total general del reporte, la app verifica que la suma coincida.</p>
+        <div class="dr-cab"><span>ID</span><span>Vendedor</span><span style="text-align:right;">Venta c/IVA ($)</span><span></span></div>
+        <div id="drFilas"></div>
+        <div class="mr-fila" style="margin-top:6px;">
+          <button class="btn secondary small" id="drAgregar" type="button">+ Agregar fila</button>
+        </div>
+        <div class="dr-foto">
+          <h4>Leer desde una foto</h4>
+          <p class="hint">Toma una foto del reporte (recta, de cerca y bien iluminada) o elige una imagen. La app propone las filas y <b>tú las confirmas</b> comparando con la foto antes de guardar.</p>
+          <div class="mr-fila">
+            <label class="btn" for="drFotoCam">Tomar foto</label>
+            <input class="file-input" id="drFotoCam" type="file" accept="image/*" capture="environment">
+            <label class="btn secondary" for="drFotoGal">Elegir imagen</label>
+            <input class="file-input" id="drFotoGal" type="file" accept="image/*">
+          </div>
+          <div class="dr-msg aviso" id="drFotoEstado" hidden></div>
+          <img id="drFotoPrev" alt="Foto del reporte (toca para ampliar)" hidden>
+        </div>
+        <details class="dr-pegar" id="drDetallePegar">
+          <summary>Pegar filas desde el reporte</summary>
+          <p class="hint" style="margin:6px 0;">Pega las líneas "Total" del reporte (ID, unidades, venta). Se leen solas; se ignoran los Sub-Total.</p>
+          <textarea id="drPegar" placeholder="Total   11190   29   169.236&#10;Total   28363   27   196.278"></textarea>
+          <button class="btn secondary small" id="drLeerPegado" type="button" style="margin-top:6px;">Leer texto pegado</button>
+        </details>
+        <div class="dr-resumen" id="drResumen"></div>
+        <label class="mr-check" id="drRevisarWrap" hidden><input type="checkbox" id="drRevisado"><span><b>Revisé cada ID y cada monto con la foto.</b> (Obligatorio: el lector puede confundir dígitos.)</span></label>
+        <div id="drMensajes"></div>
+      </section>
+      <div class="mr-fila">
+        <button class="btn" id="drGuardar" type="button">Guardar día</button>
+        <button class="btn secondary" id="drCancelar" type="button">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Guardado</div>
+
+<script>
+const PALETA = ['#1F6F54', '#B9822C', '#3B6EA5', '#8B4F9E', '#B5533C', '#2F8F8F', '#6D6231', '#7A4B2A'];
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+let state = {
+  config: null,   // {nombreTienda, ivaPct, vendedores:[{id,nombre}], tramos:[{pct,pctBono}]}
+  year: new Date().getFullYear(),
+  month: new Date().getMonth() + 1,
+  datos: { metas:{}, ventasIva:{} }  // ventasIva: "vendorId-dia" -> monto CON iva
+};
+
+/* ---------------- Almacenamiento ----------------
+   Al abrir con file://, la mayoría de los navegadores comparten el mismo
+   almacenamiento entre TODOS los .html abiertos así, sin importar el
+   nombre del archivo. Para que cada archivo (incluso una copia con otro
+   nombre) guarde sus propios datos, usamos la ruta real del archivo como
+   parte de la clave. */
+const _archivoId = (function(){
+  try{
+    // Publicado en internet (GitHub Pages, Netlify...): una sola clave fija, sin importar la ruta.
+    if(location.protocol === 'http:' || location.protocol === 'https:') return 'web';
+    return encodeURIComponent(location.pathname || location.href).slice(0,150);
+  }catch(e){ return 'default'; }
+})();
+const _memoriaRespaldo = {};
+let _usandoRespaldo = false;
+const storageLocal = {
+  get(key){
+    try{ const v = localStorage.getItem('soai:' + _archivoId + ':' + key); return v === null ? null : v; }
+    catch(e){ _usandoRespaldo = true; return _memoriaRespaldo[key] !== undefined ? _memoriaRespaldo[key] : null; }
+  },
+  set(key, value){
+    try{ localStorage.setItem('soai:' + _archivoId + ':' + key, value); }
+    catch(e){ _usandoRespaldo = true; _memoriaRespaldo[key] = value; }
+  }
+};
+
+const RE_CLAVE_DATOS = /^datos-\d{4}-\d{2}$/;
+function numOk(x, def){ const n = Number(x); return Number.isFinite(n) ? n : def; }
+function configPorDefecto(){
+  return {
+    nombreTienda:'',
+    titulo:'Seguimiento de Venta y Bonos SOAI',
+    ivaPct: 19,
+    vendedores:[
+      {id:11190, nombre:'Luz'},
+      {id:20988, nombre:'Tamara'},
+      {id:22429, nombre:'Mónica'},
+      {id:23445, nombre:'Yessica'}
+    ],
+    tramos:[{pct:1.00, pctBono:0.02},{pct:1.10, pctBono:0.04},{pct:1.20, pctBono:0.06}]
+  };
+}
+// Todo lo que viene de almacenamiento, de un archivo o de GitHub se sanea antes de usarse.
+function sanitizarConfig(c){
+  const base = configPorDefecto();
+  if(!c || typeof c !== 'object') return base;
+  const vendedores = Array.isArray(c.vendedores)
+    ? c.vendedores.slice(0,60).map(v=>({
+        id: Math.trunc(numOk(v && v.id, 0)),
+        nombre: String((v && v.nombre) || '').slice(0,60) || 'Vendedora'
+      }))
+    : base.vendedores;
+  const tramos = (Array.isArray(c.tramos) && c.tramos.length === 3)
+    ? c.tramos.map(t=>({ pct: numOk(t && t.pct, 1), pctBono: numOk(t && t.pctBono, 0) }))
+    : base.tramos;
+  return {
+    nombreTienda: String(c.nombreTienda || '').slice(0,120),
+    titulo: String(c.titulo || base.titulo).slice(0,160),
+    ivaPct: numOk(c.ivaPct, 19),
+    vendedores, tramos
+  };
+}
+function sanitizarDatos(d){
+  const out = { metas:{}, ventasIva:{} };
+  if(!d || typeof d !== 'object') return out;
+  Object.entries(d.metas || {}).forEach(([k,v])=>{ if(/^\d{1,2}$/.test(k) && Number.isFinite(Number(v))) out.metas[k] = Number(v); });
+  Object.entries(d.ventasIva || {}).forEach(([k,v])=>{ if(/^\d+-\d{1,2}$/.test(k) && Number.isFinite(Number(v))) out.ventasIva[k] = Number(v); });
+  return out;
+}
+async function cargarConfig(){
+  const v = storageLocal.get('config');
+  if(v){ try{ return sanitizarConfig(JSON.parse(v)); }catch(e){} }
+  return configPorDefecto();
+}
+let _estadoGuardado = '✓ Se guarda automáticamente';
+function renderEstadoBarra(){
+  const el = document.getElementById('tbAuto');
+  if(!el) return;
+  const mal = _usandoRespaldo;
+  let t = mal ? '⚠ No se está guardando: el navegador bloquea el almacenamiento' : _estadoGuardado;
+  if(navigator.onLine === false) t = 'Sin conexión · ' + t;
+  el.textContent = t;
+  el.style.color = mal ? 'var(--warn)' : '';
+  el.style.fontWeight = mal ? '600' : '';
+}
+function marcarGuardado(){
+  const h = new Date();
+  _estadoGuardado = `✓ Guardado ${pad2(h.getHours())}:${pad2(h.getMinutes())}`;
+  renderEstadoBarra();
+}
+async function guardarConfig(){
+  storageLocal.set('config', JSON.stringify(state.config));
+  marcarGuardado();
+  mostrarToast(_usandoRespaldo ? 'No se pudo guardar en este navegador' : 'Guardado');
+}
+function claveMes(y,m){ return `datos-${y}-${String(m).padStart(2,'0')}`; }
+async function cargarDatosMes(y,m){
+  const v = storageLocal.get(claveMes(y,m));
+  if(v){ try{ return sanitizarDatos(JSON.parse(v)); }catch(e){} }
+  return { metas:{}, ventasIva:{} };
+}
+async function guardarDatosMes(){
+  storageLocal.set(claveMes(state.year, state.month), JSON.stringify(state.datos));
+  marcarGuardado();
+  mostrarToast(_usandoRespaldo ? 'No se pudo guardar en este navegador' : 'Guardado');
+}
+let toastTimer=null;
+function mostrarToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent = msg || 'Guardado';
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'), 1200);
+}
+
+/* ---------------- Utilidades ---------------- */
+function diasEnMes(y,m){ return new Date(y, m, 0).getDate(); }
+function pad2(n){ return String(n).padStart(2,'0'); }
+function formatoMoneda(n){ return '$' + Math.round(n||0).toLocaleString('es-CL'); }
+function formatoPct(p){ return Math.round((p||0)*100) + '%'; }
+function colorVendedor(i){ return PALETA[i % PALETA.length]; }
+function factorIva(){ return 1 + (state.config.ivaPct||0)/100; }
+function ventaNeta(vendorId, dia){ return (state.datos.ventasIva[`${vendorId}-${dia}`] || 0) / factorIva(); }
+function ventaTotalNetaDia(dia){
+  // Suma TODO lo cargado ese día en ventasIva, incluyendo IDs que aún no
+  // estén agregados como vendedora — la meta compartida debe reflejar la
+  // venta real de la tienda, no solo la de las vendedoras reconocidas.
+  let total = 0;
+  for(const key in state.datos.ventasIva){
+    const idx = key.lastIndexOf('-');
+    const d = key.substring(idx+1);
+    if(+d === dia){ total += (state.datos.ventasIva[key] || 0) / factorIva(); }
+  }
+  return total;
+}
+function ventaNoAsignadaNetaDia(dia){
+  const conocidos = new Set(state.config.vendedores.map(v=>String(v.id)));
+  let total = 0;
+  for(const key in state.datos.ventasIva){
+    const idx = key.lastIndexOf('-');
+    const id = key.substring(0, idx);
+    const d = key.substring(idx+1);
+    if(+d === dia && !conocidos.has(id)){ total += (state.datos.ventasIva[key] || 0) / factorIva(); }
+  }
+  return total;
+}
+function pctDia(dia){
+  const meta = state.datos.metas[dia] || 0;
+  return meta > 0 ? ventaTotalNetaDia(dia) / meta : 0;
+}
+function tramoAlcanzado(pct){
+  const ordenado = [...state.config.tramos].sort((a,b)=>b.pct-a.pct);
+  for(const t of ordenado){ if(pct >= t.pct) return t; }
+  return null;
+}
+function claseTier(pct){
+  const t = tramoAlcanzado(pct);
+  if(t) return 'tier-' + Math.round(t.pct*100);
+  return pct > 0 ? 'tier-bajo' : '';
+}
+function bonoVendorDia(vendorId, dia){
+  const t = tramoAlcanzado(pctDia(dia));
+  if(!t) return 0;
+  return ventaNeta(vendorId, dia) * t.pctBono;
+}
+function fechaDia(y,m,d){
+  const f = new Date(y, m-1, d);
+  return pad2(f.getDate()) + '-' + ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][f.getMonth()];
+}
+
+/* ---------------- Render: paneles ---------------- */
+function renderPanelVendedoras(){
+  const cont = document.getElementById('listaVendedoras');
+  cont.innerHTML = '';
+  state.config.vendedores.forEach((v, i)=>{
+    const row = document.createElement('div');
+    row.className = 'vendedora-row';
+    row.innerHTML = `
+      <span class="swatch" style="background:${colorVendedor(i)}"></span>
+      <input type="text" value="${esc(v.nombre)}" data-idx="${i}" data-campo="nombre" placeholder="Nombre">
+      <input type="number" value="${v.id}" data-idx="${i}" data-campo="id" placeholder="ID">
+      <button class="btn-x" type="button" data-idx="${i}" title="Quitar">×</button>
+    `;
+    cont.appendChild(row);
+  });
+  cont.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const idx = +e.target.dataset.idx;
+      const campo = e.target.dataset.campo;
+      if(campo === 'id'){
+        const nuevo = parseInt(e.target.value, 10);
+        state.config.vendedores[idx].id = isNaN(nuevo) ? 0 : nuevo;
+      } else {
+        state.config.vendedores[idx].nombre = e.target.value || `Vendedora ${idx+1}`;
+      }
+      guardarConfig();
+      renderTabla(); renderResumen();
+    });
+  });
+  cont.querySelectorAll('.btn-x').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const idx = +e.target.dataset.idx;
+      if(!confirm(`¿Quitar a ${state.config.vendedores[idx].nombre} del seguimiento?`)) return;
+      state.config.vendedores.splice(idx,1);
+      guardarConfig();
+      renderPanelVendedoras(); renderTabla(); renderResumen();
+    });
+  });
+}
+
+function renderPanelTramos(){
+  const cont = document.getElementById('listaTramos');
+  cont.innerHTML = '';
+  state.config.tramos.forEach((t, i)=>{
+    const row = document.createElement('div');
+    row.className = 'tramo-row';
+    row.innerHTML = `
+      <span class="lbl">Tramo ${i+1}</span>
+      <span style="display:flex;align-items:center;gap:4px;">≥<input type="number" value="${Math.round(t.pct*100)}" data-idx="${i}" data-campo="pct" step="1"><span class="suf">%</span></span>
+      <span style="display:flex;align-items:center;gap:4px;"><input type="number" value="${Math.round(t.pctBono*1000)/10}" data-idx="${i}" data-campo="pctBono" step="0.5"><span class="suf">% c/u</span></span>
+    `;
+    cont.appendChild(row);
+  });
+  document.getElementById('inputIva').value = state.config.ivaPct;
+  cont.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const idx = +e.target.dataset.idx;
+      const campo = e.target.dataset.campo;
+      const val = parseFloat(e.target.value) || 0;
+      if(campo === 'pct') state.config.tramos[idx].pct = val/100;
+      else state.config.tramos[idx].pctBono = val/100;
+      guardarConfig();
+      renderTabla(); renderResumen();
+    });
+  });
+}
+document.getElementById('inputIva').addEventListener('change', e=>{
+  const val = parseFloat(e.target.value);
+  state.config.ivaPct = isNaN(val) ? 0 : val;
+  guardarConfig();
+  renderTabla(); renderResumen();
+});
+
+/* ---------------- Render: tabla ledger ---------------- */
+
+/* ---------------- Filtros y utilidades de vista ---------------- */
+const filtros = {vendedora:'todas', desde:null, hasta:null, estado:'todos'};
+const detallesAbiertos = new Set();
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function nombreApp(){ return (state.config && state.config.titulo) || 'Seguimiento de Venta y Bonos SOAI'; }
+function actualizarEtiquetasTitulo(){
+  const t = nombreApp();
+  document.title = t;
+  const el = document.getElementById('lblTituloImport');
+  if(el){ el.textContent = t; el.title = t; }
+}
+function filtrosActivos(){
+  return filtros.vendedora !== 'todas' || !!filtros.desde || !!filtros.hasta || filtros.estado !== 'todos';
+}
+function tramoRank(pct){
+  const asc = [...state.config.tramos].sort((a,b)=>a.pct-b.pct);
+  const t = tramoAlcanzado(pct);
+  return t ? asc.findIndex(x=>x.pct===t.pct) : -1;
+}
+function diaPasaFiltros(d){
+  if(filtros.desde && d < filtros.desde) return false;
+  if(filtros.hasta && d > filtros.hasta) return false;
+  const meta = state.datos.metas[d] || 0;
+  const neta = ventaTotalNetaDia(d);
+  const rank = tramoRank(pctDia(d));
+  switch(filtros.estado){
+    case 'conventa': return neta > 0;
+    case 'sinventa': return neta <= 0;
+    case 'sinmeta': return meta <= 0;
+    case 'bajo': return meta > 0 && rank < 0;
+    case 'contramo': return rank >= 0;
+    case 't1': return rank === 0;
+    case 't2': return rank === 1;
+    case 't3': return rank >= 2;
+    default: return true;
+  }
+}
+function diasVisibles(){
+  const n = diasEnMes(state.year, state.month);
+  const out = [];
+  for(let d=1; d<=n; d++){ if(diaPasaFiltros(d)) out.push(d); }
+  return out;
+}
+function vendedorasVisibles(){
+  return state.config.vendedores
+    .map((v,i)=>({id:v.id, nombre:v.nombre, _i:i}))
+    .filter(v => filtros.vendedora === 'todas' || String(v.id) === filtros.vendedora);
+}
+let _sigFiltroVend = null;
+function renderFiltroVendedoras(){
+  const sel = document.getElementById('fVend');
+  const sig = state.config.vendedores.map(v=>v.id+':'+v.nombre).join('|');
+  if(sig === _sigFiltroVend) return;
+  _sigFiltroVend = sig;
+  if(filtros.vendedora !== 'todas' && !state.config.vendedores.some(v=>String(v.id)===filtros.vendedora)) filtros.vendedora = 'todas';
+  sel.innerHTML = `<option value="todas">Todas</option>` +
+    state.config.vendedores.map(v=>`<option value="${esc(v.id)}">${esc(v.nombre)} (ID ${esc(v.id)})</option>`).join('');
+  sel.value = filtros.vendedora;
+}
+function initFiltros(){
+  const n = v => { const x = parseInt(v,10); return isNaN(x) || x < 1 ? null : x; };
+  document.getElementById('fVend').addEventListener('change', e=>{ filtros.vendedora = e.target.value; renderTabla(); });
+  document.getElementById('fDesde').addEventListener('change', e=>{ filtros.desde = n(e.target.value); renderTabla(); });
+  document.getElementById('fHasta').addEventListener('change', e=>{ filtros.hasta = n(e.target.value); renderTabla(); });
+  document.getElementById('fEstado').addEventListener('change', e=>{ filtros.estado = e.target.value; renderTabla(); });
+  document.getElementById('btnLimpiarFiltros').addEventListener('click', ()=>{
+    filtros.vendedora = 'todas'; filtros.desde = null; filtros.hasta = null; filtros.estado = 'todos';
+    document.getElementById('fVend').value = 'todas';
+    document.getElementById('fDesde').value = '';
+    document.getElementById('fHasta').value = '';
+    document.getElementById('fEstado').value = 'todos';
+    renderTabla();
+  });
+}
+
+/* ---------------- Detalle desplegable por vendedora ---------------- */
+function sumasVendedora(vid){
+  const n = diasEnMes(state.year, state.month);
+  let neta=0, bono=0, diasBono=0;
+  for(let d=1; d<=n; d++){
+    neta += ventaNeta(vid, d);
+    const b = bonoVendorDia(vid, d);
+    bono += b; if(b > 0) diasBono++;
+  }
+  return {neta, bono, diasBono};
+}
+function htmlResumenVend(vid){
+  const s = sumasVendedora(vid);
+  return `<span>Venta neta: <b>${formatoMoneda(s.neta)}</b></span><span>Bono: <b>${formatoMoneda(s.bono)}</b></span><span>Días con bono: <b>${s.diasBono}</b></span>`;
+}
+function renderVendedorasDetalle(){
+  const cont = document.getElementById('detalleVendedoras');
+  if(!cont) return;
+  const vends = vendedorasVisibles();
+  const dias = diasVisibles();
+  if(vends.length === 0){ cont.innerHTML = '<div class="sinasignar-shell"><div class="sinasignar-vacio">No hay vendedoras para mostrar. Agrégalas en Configuración.</div></div>'; return; }
+  cont.innerHTML = vends.map(v=>{
+    const abierto = detallesAbiertos.has(String(v.id)) ? ' open' : '';
+    const filas = dias.map(d=>{
+      const meta = state.datos.metas[d] || 0;
+      const iva = state.datos.ventasIva[`${v.id}-${d}`] || 0;
+      const pct = pctDia(d), tier = claseTier(pct), bono = bonoVendorDia(v.id, d);
+      return `<tr>
+        <td>${d}</td><td>${fechaDia(state.year, state.month, d)}</td>
+        <td id="dmeta-${v.id}-${d}">${meta ? formatoMoneda(meta) : '—'}</td>
+        <td><input type="number" data-tipo="venta" data-dia="${d}" data-vendor="${v.id}" value="${iva || ''}" placeholder="0"></td>
+        <td id="dneta-${v.id}-${d}">${formatoMoneda(ventaNeta(v.id, d))}</td>
+        <td class="${tier}" id="dpct-${v.id}-${d}">${formatoPct(pct)}</td>
+        <td class="${tier}" id="dbono-${v.id}-${d}">${bono ? formatoMoneda(bono) : '—'}</td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--ink-soft);padding:14px;">Ningún día coincide con los filtros.</td></tr>`;
+    return `<details class="vend-det" data-vid="${esc(v.id)}" style="--vc:${colorVendedor(v._i)}"${abierto}>
+      <summary><span class="vn">${esc(v.nombre)}</span><span class="vid">ID ${esc(v.id)}</span><span class="vsum" id="dsum-${v.id}">${htmlResumenVend(v.id)}</span></summary>
+      <div class="det-body"><table class="det-tabla">
+        <thead><tr><th>Día</th><th>Fecha</th><th>Meta tienda</th><th>Venta c/IVA</th><th>Venta neta</th><th>% tienda</th><th>Bono</th></tr></thead>
+        <tbody>${filas}</tbody>
+      </table></div>
+    </details>`;
+  }).join('');
+  cont.querySelectorAll('details.vend-det').forEach(det=>{
+    det.addEventListener('toggle', ()=>{
+      if(det.open) detallesAbiertos.add(det.dataset.vid); else detallesAbiertos.delete(det.dataset.vid);
+    });
+  });
+}
+function actualizarSumasDetalle(){
+  state.config.vendedores.forEach(v=>{
+    const el = document.getElementById(`dsum-${v.id}`);
+    if(el) el.innerHTML = htmlResumenVend(v.id);
+  });
+}
+function actualizarDetalleDia(dia){
+  const meta = state.datos.metas[dia] || 0;
+  const pct = pctDia(dia), tier = claseTier(pct);
+  state.config.vendedores.forEach(v=>{
+    const m = document.getElementById(`dmeta-${v.id}-${dia}`);
+    const n = document.getElementById(`dneta-${v.id}-${dia}`);
+    const p = document.getElementById(`dpct-${v.id}-${dia}`);
+    const b = document.getElementById(`dbono-${v.id}-${dia}`);
+    const bono = bonoVendorDia(v.id, dia);
+    if(m) m.textContent = meta ? formatoMoneda(meta) : '—';
+    if(n) n.textContent = formatoMoneda(ventaNeta(v.id, dia));
+    if(p){ p.textContent = formatoPct(pct); p.className = tier; }
+    if(b){ b.textContent = bono ? formatoMoneda(bono) : '—'; b.className = tier; }
+  });
+  actualizarSumasDetalle();
+}
+
+function renderTabla(){
+  renderFiltroVendedoras();
+  const dias = diasEnMes(state.year, state.month);
+  const diasLista = diasVisibles();
+  const vends = vendedorasVisibles();
+  document.getElementById('captionLedger').textContent = `${MESES[state.month-1]} ${state.year}` + (filtrosActivos() ? ' · vista filtrada' : '');
+  document.getElementById('fCuenta').textContent = filtrosActivos() ? `Mostrando ${diasLista.length} de ${dias} días` : '';
+
+  let fila1 = `<tr><th class="dia" rowspan="2">Día</th><th class="fecha" rowspan="2">Fecha</th><th class="meta" rowspan="2">Meta del día (total tienda)</th>`;
+  const tramosOrd = [...state.config.tramos].sort((a,b)=>a.pct-b.pct);
+  fila1 += `<th class="grp-empresa" colspan="${3 + tramosOrd.length}">Empresa</th>`;
+  vends.forEach((v,i)=>{
+    fila1 += `<th class="vendor-head" style="--vc:${colorVendedor(v._i)}" colspan="3">${esc(v.nombre)} <span style="opacity:.75;font-weight:400;">(ID ${v.id})</span></th>`;
+  });
+  fila1 += `</tr>`;
+  let fila2 = `<tr class="sub"><th class="grp-empresa">Venta neta total</th><th class="grp-empresa">% Cumpl.</th><th class="grp-empresa">Tramo</th>`;
+  tramosOrd.forEach(t=>{ fila2 += `<th class="grp-empresa">Falta ≥${formatoPct(t.pct)}</th>`; });
+  vends.forEach(()=>{ fila2 += `<th>Venta c/IVA</th><th>Venta neta</th><th>Bono</th>`; });
+  fila2 += `</tr>`;
+  document.getElementById('theadLedger').innerHTML = fila1 + fila2;
+
+  let filas = '';
+  for(const d of diasLista){
+    const meta = state.datos.metas[d] || 0;
+    const semanaAlt = Math.floor((d-1)/7) % 2 === 1 ? ' fila-semana-alt' : '';
+    const totalNeta = ventaTotalNetaDia(d);
+    const noAsignada = ventaNoAsignadaNetaDia(d);
+    const pct = pctDia(d);
+    const tramo = tramoAlcanzado(pct);
+    const tier = claseTier(pct);
+    filas += `<tr data-dia="${d}" class="${semanaAlt}">
+      <td class="dia">${d}</td>
+      <td class="fecha">${fechaDia(state.year, state.month, d)}</td>
+      <td class="meta"><input type="number" data-tipo="meta" data-dia="${d}" value="${meta || ''}" placeholder="0"></td>
+      <td class="empresa-neta" id="totneta-${d}">${formatoMoneda(totalNeta)}${noAsignada>0 ? `<br><span style="font-size:9px;color:var(--warn);font-style:normal;">+${formatoMoneda(noAsignada)} sin asignar</span>` : ''}</td>
+      <td class="${tier}" id="pct-${d}">${formatoPct(pct)}</td>
+      <td class="${tier}" id="tramo-${d}">${tramo ? formatoPct(tramo.pct) : '—'}</td>`;
+    tramosOrd.forEach((t,ti)=>{
+      const falta = faltaParaTramo(d, t);
+      filas += `<td id="falta${ti}-${d}">${falta > 0 ? formatoMoneda(falta) : '✓'}</td>`;
+    });
+    vends.forEach(v=>{
+      const iva = state.datos.ventasIva[`${v.id}-${d}`] || 0;
+      const neta = ventaNeta(v.id, d);
+      const bono = bonoVendorDia(v.id, d);
+      filas += `
+        <td><input type="number" data-tipo="venta" data-dia="${d}" data-vendor="${v.id}" value="${iva || ''}" placeholder="0"></td>
+        <td class="neta" id="neta-${v.id}-${d}">${formatoMoneda(neta)}</td>
+        <td class="${tier}" id="bono-${v.id}-${d}">${bono ? formatoMoneda(bono) : '—'}</td>`;
+    });
+    filas += `</tr>`;
+  }
+  if(!filas){
+    filas = `<tr><td colspan="${6 + tramosOrd.length + vends.length*3}" style="text-align:center;padding:18px;color:var(--ink-soft);font-family:var(--font-body);">Ningún día coincide con los filtros.</td></tr>`;
+  }
+  document.getElementById('tbodyLedger').innerHTML = filas;
+
+  renderTfootTotales();
+  renderVendedorasDetalle();
+}
+
+function onEditarCelda(e){
+  const t = e.target;
+  const tipo = t.dataset ? t.dataset.tipo : null;
+  if(tipo !== 'meta' && tipo !== 'venta') return;
+  const dia = +t.dataset.dia;
+  const valor = parseFloat(t.value) || 0;
+  if(tipo === 'meta'){
+    state.datos.metas[dia] = valor;
+  } else {
+    const vendorId = t.dataset.vendor;
+    state.datos.ventasIva[`${vendorId}-${dia}`] = valor;
+    // la misma venta puede estar visible en la tabla principal y en el detalle de la vendedora
+    document.querySelectorAll(`input[data-tipo="venta"][data-vendor="${vendorId}"][data-dia="${dia}"]`).forEach(o=>{ if(o !== t) o.value = t.value; });
+  }
+  actualizarFila(dia);
+  actualizarDetalleDia(dia);
+  renderTfootTotales();
+  renderResumen();
+}
+document.addEventListener('input', onEditarCelda);
+document.addEventListener('change', e=>{
+  const tipo = e.target.dataset ? e.target.dataset.tipo : null;
+  if(tipo === 'meta' || tipo === 'venta') guardarDatosMes();
+});
+// Enter baja a la casilla del día siguiente (como en una planilla)
+document.addEventListener('keydown', e=>{
+  if(e.key !== 'Enter') return;
+  const t = e.target;
+  if(!t.dataset || !t.dataset.tipo) return;
+  const tabla = t.closest('table');
+  if(!tabla) return;
+  const sel = t.dataset.tipo === 'meta' ? 'input[data-tipo="meta"]' : `input[data-tipo="venta"][data-vendor="${t.dataset.vendor}"]`;
+  const lista = [...tabla.querySelectorAll(sel)];
+  const sig = lista[lista.indexOf(t) + 1];
+  if(sig){ e.preventDefault(); sig.focus(); sig.select(); }
+});
+
+function faltaParaTramo(dia, tramo){
+  const meta = state.datos.metas[dia] || 0;
+  const objetivo = meta * tramo.pct;
+  const falta = objetivo - ventaTotalNetaDia(dia);
+  return falta > 0 ? falta : 0;
+}
+
+function actualizarFila(dia){
+  const totalNeta = ventaTotalNetaDia(dia);
+  const noAsignada = ventaNoAsignadaNetaDia(dia);
+  const pct = pctDia(dia);
+  const tramo = tramoAlcanzado(pct);
+  const tier = claseTier(pct);
+
+  const totCell = document.getElementById(`totneta-${dia}`);
+  const pctCell = document.getElementById(`pct-${dia}`);
+  const tramoCell = document.getElementById(`tramo-${dia}`);
+  if(totCell) totCell.innerHTML = `${formatoMoneda(totalNeta)}${noAsignada>0 ? `<br><span style="font-size:9px;color:var(--warn);font-style:normal;">+${formatoMoneda(noAsignada)} sin asignar</span>` : ''}`;
+  if(pctCell){ pctCell.textContent = formatoPct(pct); pctCell.className = tier; }
+  if(tramoCell){ tramoCell.textContent = tramo ? formatoPct(tramo.pct) : '—'; tramoCell.className = tier; }
+
+  const tramosOrd = [...state.config.tramos].sort((a,b)=>a.pct-b.pct);
+  tramosOrd.forEach((t,ti)=>{
+    const faltaCell = document.getElementById(`falta${ti}-${dia}`);
+    if(faltaCell){
+      const falta = faltaParaTramo(dia, t);
+      faltaCell.textContent = falta > 0 ? formatoMoneda(falta) : '✓';
+    }
+  });
+
+  state.config.vendedores.forEach(v=>{
+    const neta = ventaNeta(v.id, dia);
+    const bono = bonoVendorDia(v.id, dia);
+    const netaCell = document.getElementById(`neta-${v.id}-${dia}`);
+    const bonoCell = document.getElementById(`bono-${v.id}-${dia}`);
+    if(netaCell) netaCell.textContent = formatoMoneda(neta);
+    if(bonoCell){ bonoCell.textContent = bono ? formatoMoneda(bono) : '—'; bonoCell.className = tier; }
+  });
+}
+
+function renderTfootTotales(){
+  const dias = diasEnMes(state.year, state.month);
+  const vends = vendedorasVisibles();
+
+  let sumMeta=0, sumNeta=0, sumPct=0;
+  let cT1=0, cT2=0, cT3=0, cBajo=0;
+  for(let d=1; d<=dias; d++){
+    const meta = state.datos.metas[d]||0;
+    const neta = ventaTotalNetaDia(d);
+    const pct = pctDia(d);
+    sumMeta += meta; sumNeta += neta; sumPct += pct;
+    const t = tramoAlcanzado(pct);
+    if(!t) { if(pct>0) cBajo++; }
+    else if(Math.round(t.pct*100) === Math.round(([...state.config.tramos].sort((a,b)=>a.pct-b.pct)[0]||{pct:0}).pct*100)) cT1++;
+  }
+  // recomputar distribución de tramos de forma más simple y confiable
+  const tramosOrd = [...state.config.tramos].sort((a,b)=>a.pct-b.pct);
+  cT1=cT2=cT3=cBajo=0;
+  for(let d=1; d<=dias; d++){
+    const pct = pctDia(d);
+    const t = tramoAlcanzado(pct);
+    if(!t){ if(pct>0) cBajo++; continue; }
+    const rank = tramosOrd.findIndex(x=>x.pct===t.pct);
+    if(rank===0) cT1++; else if(rank===1) cT2++; else cT3++;
+  }
+
+  let totRow = `<tr><td class="dia" colspan="3">TOTAL MES</td><td>${formatoMoneda(sumNeta)}</td><td>${formatoPct(dias?sumPct/dias:0)}</td><td>—</td>`;
+  tramosOrd.forEach(()=>{ totRow += `<td>—</td>`; });
+  vends.forEach(v=>{
+    let sIva=0, sNeta=0, sBono=0;
+    for(let d=1; d<=dias; d++){
+      sIva += state.datos.ventasIva[`${v.id}-${d}`] || 0;
+      sNeta += ventaNeta(v.id, d);
+      sBono += bonoVendorDia(v.id, d);
+    }
+    totRow += `<td>${formatoMoneda(sIva)}</td><td>${formatoMoneda(sNeta)}</td><td>${formatoMoneda(sBono)}</td>`;
+  });
+  totRow += `</tr>`;
+
+  const dist = `T1:${cT1} · T2:${cT2} · T3:${cT3} · Bajo:${cBajo}`;
+  let distRow = `<tr><td class="dia" colspan="3">Días por tramo alcanzado</td><td>${formatoMoneda(sumMeta)}<br><span style="font-weight:400;font-size:10.5px;">meta acum.</span></td><td colspan="${2 + tramosOrd.length}">${dist}</td>`;
+  vends.forEach(()=>{ distRow += `<td colspan="3">—</td>`; });
+  distRow += `</tr>`;
+
+  document.getElementById('tfootLedger').innerHTML = totRow + distRow;
+}
+
+/* ---------------- Render: resumen ---------------- */
+function renderHoy(){
+  const el = document.getElementById('hoyCard');
+  if(!el) return;
+  const h = new Date();
+  if(h.getFullYear() !== state.year || h.getMonth()+1 !== state.month){ el.innerHTML = ''; return; }
+  const d = h.getDate();
+  const meta = state.datos.metas[d] || 0;
+  const neta = ventaTotalNetaDia(d);
+  const pct = pctDia(d);
+  const tr = tramoAlcanzado(pct);
+  const tramosOrd = [...state.config.tramos].sort((a,b)=>a.pct-b.pct);
+  const faltas = tramosOrd.map(t=>{
+    const f = faltaParaTramo(d, t);
+    const txt = meta > 0 ? (f > 0 ? formatoMoneda(f) : '✓ alcanzado') : '—';
+    return `<div class="hoy-fila"><span>Falta para ≥${formatoPct(t.pct)}</span><b>${txt}</b></div>`;
+  }).join('');
+  el.innerHTML = `<div class="empresa-card" style="border-top-color:var(--gold);">
+    <h2 style="margin:0 0 10px 0;font-family:var(--font-display);font-weight:700;font-size:18px;color:var(--brand-dark);">Hoy · ${fechaDia(state.year, state.month, d)}</h2>
+    <div class="metrics">
+      <div class="metric-big"><div class="num">${meta ? formatoMoneda(meta) : '—'}</div><div class="lbl">Meta del día</div></div>
+      <div class="metric-big"><div class="num">${formatoMoneda(neta)}</div><div class="lbl">Venta neta total</div></div>
+      <div class="metric-big"><div class="num">${formatoPct(pct)}</div><div class="lbl">Cumplimiento${tr ? ' · tramo ' + formatoPct(tr.pct) : ''}</div></div>
+    </div>
+    <div style="margin-top:10px;">${faltas}</div>
+    ${meta > 0 ? '' : '<div class="hoy-sin-meta">Todavía no hay meta cargada para hoy.</div>'}
+  </div>`;
+}
+
+function renderResumen(){
+  const dias = diasEnMes(state.year, state.month);
+  const tramosOrd = [...state.config.tramos].sort((a,b)=>a.pct-b.pct);
+
+  let sumMeta=0, sumNeta=0, sumPct=0, cT1=0, cT2=0, cT3=0, cBajo=0, sumNoAsignada=0;
+  for(let d=1; d<=dias; d++){
+    const meta = state.datos.metas[d]||0;
+    sumMeta += meta;
+    sumNeta += ventaTotalNetaDia(d);
+    sumNoAsignada += ventaNoAsignadaNetaDia(d);
+    const pct = pctDia(d);
+    sumPct += pct;
+    const t = tramoAlcanzado(pct);
+    if(!t){ if(pct>0) cBajo++; continue; }
+    const rank = tramosOrd.findIndex(x=>x.pct===t.pct);
+    if(rank===0) cT1++; else if(rank===1) cT2++; else cT3++;
+  }
+  const avgPct = dias? sumPct/dias : 0;
+
+  document.getElementById('empresaCard').innerHTML = `
+    <h2 style="margin:0 0 12px 0;font-family:var(--font-display);font-weight:700;font-size:18px;color:var(--brand-dark);">Meta compartida — toda la tienda</h2>
+    <div class="metrics">
+      <div class="metric-big"><div class="num">${formatoMoneda(sumMeta)}</div><div class="lbl">Meta acumulada del mes</div></div>
+      <div class="metric-big"><div class="num">${formatoMoneda(sumNeta)}</div><div class="lbl">Venta neta acumulada</div></div>
+      <div class="metric-big"><div class="num">${formatoPct(avgPct)}</div><div class="lbl">% cumplimiento promedio</div></div>
+    </div>
+    <div class="tramos-dist">
+      <span><span class="dot" style="background:${colorVendedor(0)}"></span>Tramo 1: ${cT1} días</span>
+      <span><span class="dot" style="background:${colorVendedor(0)}"></span>Tramo 2: ${cT2} días</span>
+      <span><span class="dot" style="background:var(--gold)"></span>Tramo 3: ${cT3} días</span>
+      <span><span class="dot" style="background:var(--warn)"></span>Bajo meta: ${cBajo} días</span>
+    </div>
+    ${sumNoAsignada>0 ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-family:var(--font-mono);font-size:12px;color:var(--warn);">⚠ ${formatoMoneda(sumNoAsignada)} en venta neta de IDs sin vendedora asignada este mes (ya incluidos en el total de arriba). Agrégalos en el panel "Vendedoras" si corresponde.</div>` : ''}
+  `;
+
+  const cont = document.getElementById('scoreboard');
+  cont.innerHTML = '';
+  state.config.vendedores.forEach((v,i)=>{
+    let sNeta=0, sBono=0, sIva=0;
+    for(let d=1; d<=dias; d++){
+      sIva += state.datos.ventasIva[`${v.id}-${d}`] || 0;
+      sNeta += ventaNeta(v.id, d);
+      sBono += bonoVendorDia(v.id, d);
+    }
+    const color = colorVendedor(i);
+    const card = document.createElement('div');
+    card.className = 'score-card';
+    card.style.setProperty('--vc', color);
+    card.innerHTML = `
+      <div class="nombre">${esc(v.nombre)}</div>
+      <div class="id">ID ${v.id}</div>
+      <div class="metric"><span class="lbl">Venta c/IVA del mes</span><span>${formatoMoneda(sIva)}</span></div>
+      <div class="metric"><span class="lbl">Venta neta del mes</span><span>${formatoMoneda(sNeta)}</span></div>
+      <div class="metric"><span class="lbl">Bono ganado</span><span>${formatoMoneda(sBono)}</span></div>
+    `;
+    cont.appendChild(card);
+  });
+  renderBonosDetalle();
+  renderSinAsignar();
+  renderHoy();
+}
+
+function renderBonosDetalle(){
+  const dias = diasEnMes(state.year, state.month);
+  const cont = document.getElementById('bonosDetalle');
+  if(!cont) return;
+  cont.innerHTML = '';
+  state.config.vendedores.forEach((v,i)=>{
+    const filas = [];
+    for(let d=1; d<=dias; d++){
+      const bono = bonoVendorDia(v.id, d);
+      if(bono > 0){
+        filas.push({dia:d, neta: ventaNeta(v.id, d), pct: pctDia(d), bono});
+      }
+    }
+    const color = colorVendedor(i);
+    const card = document.createElement('div');
+    card.className = 'bono-card';
+    card.style.setProperty('--vc', color);
+    const tabla = filas.length === 0
+      ? `<div class="vacio">Sin bonos este mes todavía.</div>`
+      : `<table><thead><tr><th>Fecha</th><th>Venta neta</th><th>% tienda</th><th>Bono</th></tr></thead><tbody>` +
+        filas.map(f=>`<tr><td>${fechaDia(state.year,state.month,f.dia)}</td><td>${formatoMoneda(f.neta)}</td><td>${formatoPct(f.pct)}</td><td>${formatoMoneda(f.bono)}</td></tr>`).join('') +
+        `</tbody></table>`;
+    card.innerHTML = `<h3>${esc(v.nombre)} <span class="conteo">(${filas.length} día${filas.length===1?'':'s'})</span></h3>${tabla}`;
+    cont.appendChild(card);
+  });
+}
+
+function renderSinAsignar(){
+  const cont = document.getElementById('sinAsignarPanel');
+  if(!cont) return;
+  const conocidos = new Set(state.config.vendedores.map(v=>String(v.id)));
+  const filas = [];
+  Object.keys(state.datos.ventasIva).forEach(key=>{
+    const idx = key.lastIndexOf('-');
+    const id = key.substring(0, idx);
+    const dia = +key.substring(idx+1);
+    if(!conocidos.has(id) && state.datos.ventasIva[key] > 0){
+      filas.push({id, dia, iva: state.datos.ventasIva[key]});
+    }
+  });
+  filas.sort((a,b)=> a.dia - b.dia || a.id.localeCompare(b.id));
+
+  if(filas.length === 0){
+    cont.innerHTML = `<div class="sinasignar-shell"><div class="sinasignar-vacio">No hay ventas sin asignar este mes.</div></div>`;
+    return;
+  }
+
+  let filasHtml = '';
+  filas.forEach(f=>{
+    filasHtml += `<tr>
+      <td>${fechaDia(state.year, state.month, f.dia)}</td>
+      <td>${f.id}</td>
+      <td><input type="number" data-id="${f.id}" data-dia="${f.dia}" value="${f.iva}"></td>
+      <td>${formatoMoneda(f.iva / factorIva())}</td>
+      <td style="text-align:left;">
+        <button type="button" class="btn-mini asignar" data-id="${f.id}">+ Agregar como vendedora</button>
+        <button type="button" class="btn-mini quitar" data-id="${f.id}" data-dia="${f.dia}">Quitar</button>
+      </td>
+    </tr>`;
+  });
+
+  cont.innerHTML = `<div class="sinasignar-shell"><table class="sinasignar">
+    <thead><tr><th>Fecha</th><th>ID</th><th>Venta c/IVA</th><th>Venta neta</th><th>Acciones</th></tr></thead>
+    <tbody>${filasHtml}</tbody>
+  </table></div>`;
+
+  cont.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('change', async e=>{
+      const id = e.target.dataset.id, dia = e.target.dataset.dia;
+      const val = parseFloat(e.target.value) || 0;
+      if(val <= 0){ delete state.datos.ventasIva[`${id}-${dia}`]; }
+      else { state.datos.ventasIva[`${id}-${dia}`] = val; }
+      await guardarDatosMes();
+      renderTabla(); renderResumen();
+    });
+  });
+  cont.querySelectorAll('.btn-mini.quitar').forEach(btn=>{
+    btn.addEventListener('click', async e=>{
+      const id = e.target.dataset.id, dia = e.target.dataset.dia;
+      if(!confirm(`¿Quitar la venta del ID ${id} del día ${dia}? Esto también la resta de la venta total del día.`)) return;
+      delete state.datos.ventasIva[`${id}-${dia}`];
+      await guardarDatosMes();
+      renderTabla(); renderResumen();
+    });
+  });
+  cont.querySelectorAll('.btn-mini.asignar').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = parseInt(btn.dataset.id, 10);
+      if(state.config.vendedores.some(v=>v.id===id)){ return; }
+      state.config.vendedores.push({id, nombre:`Vendedora ${id}`});
+      guardarConfig();
+      renderPanelVendedoras(); renderTabla(); renderResumen();
+    });
+  });
+}
+
+/* ---------------- Selector de periodo ---------------- */
+function inicializarSelectorPeriodo(){
+  const selMes = document.getElementById('selMes');
+  selMes.innerHTML = MESES.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('');
+  selMes.value = state.month;
+  document.getElementById('selAnio').value = state.year;
+
+  selMes.addEventListener('change', async e=>{
+    state.month = +e.target.value;
+    state.datos = await cargarDatosMes(state.year, state.month);
+    renderTabla(); renderResumen();
+  });
+  document.getElementById('selAnio').addEventListener('change', async e=>{
+    const y = parseInt(e.target.value,10);
+    if(!y || y < 2000) return;
+    state.year = y;
+    state.datos = await cargarDatosMes(state.year, state.month);
+    renderTabla(); renderResumen();
+  });
+}
+
+document.getElementById('btnAgregarVendedora').addEventListener('click', ()=>{
+  state.config.vendedores.push({id:0, nombre:`Vendedora ${state.config.vendedores.length+1}`});
+  guardarConfig();
+  renderPanelVendedoras(); renderTabla(); renderResumen();
+});
+
+document.getElementById('nombreTienda').addEventListener('change', e=>{
+  state.config.nombreTienda = e.target.value;
+  guardarConfig();
+});
+document.getElementById('tituloApp').addEventListener('change', e=>{
+  const val = e.target.value.trim() || 'Seguimiento de Venta y Bonos SOAI';
+  e.target.value = val;
+  state.config.titulo = val;
+  actualizarEtiquetasTitulo();
+  guardarConfig();
+});
+
+/* ---------------- Importar venta diaria (formato SOAI) ---------------- */
+function mostrarEstado(cual, msg, esError){
+  const el = document.getElementById(cual === 'venta' ? 'estadoVenta' : 'estadoMetas');
+  el.textContent = msg;
+  el.className = 'estado ' + (esError ? 'err' : 'ok');
+}
+
+document.getElementById('inputVenta').addEventListener('change', async e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  try{ await manejarArchivoVenta(file); }
+  catch(err){ console.error(err); mostrarEstado('venta', 'No se pudo leer el archivo: ' + err.message, true); }
+  e.target.value = '';
+});
+
+function cargarScriptExterno(src){
+  return new Promise((res, rej)=>{
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = ()=> rej(new Error('no cargó ' + src));
+    document.head.appendChild(s);
+  });
+}
+let _xlsxDesdeInternet = false;
+async function asegurarXLSX(){
+  if(window.XLSX) return;
+  try{ await cargarScriptExterno('vendor/xlsx.full.min.js'); }catch(e){}
+  if(!window.XLSX && navigator.onLine !== false){
+    try{ await cargarScriptExterno('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'); _xlsxDesdeInternet = !!window.XLSX; }catch(e){}
+  }
+  if(!window.XLSX) throw new Error('Falta la librería de Excel (carpeta "vendor"). Abre la app desde la carpeta completa —no el index.html suelto— o desde su dirección web.');
+}
+async function manejarArchivoVenta(file){
+  await asegurarXLSX();
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, {type:'array', cellDates:true});
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const data = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:null, cellDates:true});
+
+  // 1) Detectar TODOS los bloques de fecha del archivo (puede traer un
+  // solo día o varios seguidos, cada uno con su propio encabezado "id").
+  const bloques = [];
+  for(let i=0; i<data.length; i++){
+    const row = data[i] || [];
+    let esHeader = false, colId = -1, colVenta = -1, fechaCell = null;
+    for(let c=0; c<row.length; c++){
+      const v = row[c];
+      if(typeof v === 'string' && v.trim().toLowerCase() === 'id'){ esHeader = true; colId = c; }
+      if(v instanceof Date) fechaCell = v;
+    }
+    if(esHeader){
+      row.forEach((v,c)=>{
+        if(typeof v === 'string'){
+          const t = v.trim().toLowerCase();
+          if(t.includes('venta') && t.includes('iva')) colVenta = c;
+        }
+      });
+      bloques.push({inicio:i, colId, colVenta, fechaCell});
+    }
+  }
+
+  if(bloques.length === 0){
+    mostrarEstado('venta', 'No se encontraron bloques con columna "id" y fecha en el archivo.', true);
+    return;
+  }
+
+  // 2) Para cada bloque, leer sus filas de vendedoras (hasta el siguiente
+  // bloque o el final del archivo).
+  const reconocidos = new Set(state.config.vendedores.map(v=>String(v.id)));
+  const resumenDias = [];       // {dia, mes, anio, actualizados:[], noReconocidos:[], totalNoReconocido}
+  const fueraDeMes = [];        // fechas que no son del mes/año seleccionado
+  const sinVentas = [];       // días del archivo sin ninguna venta: se dejan como estaban
+  const sinDatosValidos = [];   // bloques sin fecha o sin columnas válidas
+
+  bloques.forEach((bloque, bi)=>{
+    const fin = (bi+1 < bloques.length) ? bloques[bi+1].inicio : data.length;
+    if(bloque.colId === -1 || bloque.colVenta === -1 || !bloque.fechaCell){
+      sinDatosValidos.push(bloque.inicio+1);
+      return;
+    }
+    const dia = bloque.fechaCell.getDate(), mes = bloque.fechaCell.getMonth()+1, anio = bloque.fechaCell.getFullYear();
+
+    const idsVenta = {};
+    for(let i=bloque.inicio+1; i<fin; i++){
+      const row = data[i] || [];
+      const rawId = row[bloque.colId];
+      let idNum = null;
+      if(typeof rawId === 'number') idNum = rawId;
+      else if(typeof rawId === 'string' && rawId.trim() !== '' && !isNaN(rawId.trim())) idNum = parseFloat(rawId.trim());
+      if(idNum !== null && idNum >= 1000){
+        let raw = row[bloque.colVenta];
+        let val = 0;
+        if(typeof raw === 'number') val = raw;
+        else if(typeof raw === 'string'){
+          const clean = raw.trim().replace(/\./g,'').replace(',', '.');
+          val = isNaN(clean) ? 0 : parseFloat(clean);
+        }
+        idsVenta[Math.round(idNum)] = val;
+      }
+    }
+
+    if(anio !== state.year || mes !== state.month){
+      fueraDeMes.push(`${pad2(dia)}/${pad2(mes)}/${anio}`);
+      return;
+    }
+
+    // Un bloque de fecha sin filas de vendedores (por ejemplo, días que todavía no ocurren)
+    // no se importa: así no borra lo que ya hubiera cargado ese día.
+    if(Object.keys(idsVenta).length === 0){ sinVentas.push(dia); return; }
+
+    // Reemplazo completo del día: borra lo que hubiera antes de escribir.
+    Object.keys(state.datos.ventasIva).forEach(key=>{
+      const idx = key.lastIndexOf('-');
+      const d = key.substring(idx+1);
+      if(+d === dia) delete state.datos.ventasIva[key];
+    });
+    Object.keys(idsVenta).forEach(idStr=>{
+      state.datos.ventasIva[`${idStr}-${dia}`] = idsVenta[idStr];
+    });
+
+    const actualizados = [];
+    state.config.vendedores.forEach(v=>{
+      if(idsVenta[v.id] !== undefined) actualizados.push(v.nombre);
+    });
+    const noReconocidos = Object.keys(idsVenta).filter(id => !reconocidos.has(id));
+    const totalNoReconocido = noReconocidos.reduce((s,id)=> s + (idsVenta[id]||0), 0);
+
+    resumenDias.push({dia, mes, anio, actualizados, noReconocidos, totalNoReconocido});
+  });
+
+  if(resumenDias.length === 0){
+    let msg = 'No se importó ningún día: ';
+    if(sinVentas.length && !fueraDeMes.length) msg += `los ${sinVentas.length} día(s) del archivo de este mes no traen ventas.`;
+    else msg += fueraDeMes.length ? `todas las fechas del archivo (${fueraDeMes.join(', ')}) son de otro mes/año. Cambia el mes/año arriba o sube el archivo correcto.` : 'no se pudo leer la fecha o las columnas necesarias.';
+    mostrarEstado('venta', msg, true);
+    return;
+  }
+
+  await guardarDatosMes();
+  renderTabla(); renderResumen();
+
+  resumenDias.sort((a,b)=> a.dia - b.dia);
+  const rango = resumenDias.length === 1
+    ? `${pad2(resumenDias[0].dia)}/${pad2(resumenDias[0].mes)}/${resumenDias[0].anio}`
+    : `${pad2(resumenDias[0].dia)} al ${pad2(resumenDias[resumenDias.length-1].dia)}/${pad2(resumenDias[0].mes)}/${resumenDias[0].anio}`;
+
+  let msg = `Venta importada — ${resumenDias.length} día${resumenDias.length===1?'':'s'} (${rango}), se reemplazó por completo lo que hubiera cada día.`;
+
+  const idsNoReconocidosTodos = new Map(); // id -> total sumado en el mes
+  resumenDias.forEach(rd=>{
+    rd.noReconocidos.forEach(id=>{
+      idsNoReconocidosTodos.set(id, (idsNoReconocidosTodos.get(id)||0) + (state.datos.ventasIva[`${id}-${rd.dia}`]||0));
+    });
+  });
+  if(idsNoReconocidosTodos.size > 0){
+    const detalle = [...idsNoReconocidosTodos.entries()].map(([id,tot])=>`${id} (${formatoMoneda(tot)})`).join(', ');
+    msg += ` · IDs sin vendedora asignada: ${detalle} — ya suman en la venta total, agrégalos como vendedora si corresponde.`;
+  }
+  if(sinVentas.length){
+    msg += ` · ${sinVentas.length} día(s) del archivo no traían ventas (${sinVentas.length > 6 ? 'del ' + Math.min(...sinVentas) + ' al ' + Math.max(...sinVentas) : sinVentas.join(', ')}) y se dejaron como estaban.`;
+  }
+  if(fueraDeMes.length){
+    msg += ` · ${fueraDeMes.length} fecha(s) del archivo son de otro mes y se ignoraron: ${fueraDeMes.join(', ')}.`;
+  }
+  if(sinDatosValidos.length){
+    msg += ` · ${sinDatosValidos.length} bloque(s) del archivo no se pudieron leer (fila ${sinDatosValidos.join(', ')}).`;
+  }
+
+  mostrarEstado('venta', msg, false);
+}
+
+/* ---------------- Importar metas semanales (mismo formato calendario) ---------------- */
+document.getElementById('inputMetas').addEventListener('change', async e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  try{ await manejarArchivoMetas(file); }
+  catch(err){ console.error(err); mostrarEstado('metas', 'No se pudo leer el archivo: ' + err.message, true); }
+  e.target.value = '';
+});
+
+async function manejarArchivoMetas(file){
+  await asegurarXLSX();
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, {type:'array', cellDates:true});
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const data = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:null, cellDates:true});
+
+  let nActualizados=0, nSinMeta=0, nFuera=0, nVacios=0, primera=null, ultima=null;
+  let i=0;
+  while(i < data.length){
+    const row = data[i] || [];
+    const esFilaFecha = row.some(c => c instanceof Date);
+    if(esFilaFecha && i+1 < data.length){
+      const valRow = data[i+1] || [];
+      row.forEach((cell, j)=>{
+        if(cell instanceof Date){
+          const y = cell.getFullYear(), mo = cell.getMonth()+1, d = cell.getDate();
+          let raw = valRow[j];
+          let val = 0;
+          if(typeof raw === 'number') val = raw;
+          else if(typeof raw === 'string'){
+            const clean = raw.trim().replace(/\./g,'').replace(',', '.');
+            const num = parseFloat(clean);
+            val = isNaN(num) ? 0 : num;
+          }
+          if(y === state.year && mo === state.month){
+            // celda vacía = todavía no hay meta cargada: se deja el día como estaba
+            if(raw === null || raw === undefined || (typeof raw === 'string' && raw.trim() === '')){ nVacios++; return; }
+            state.datos.metas[d] = val;
+            if(val > 0) nActualizados++; else nSinMeta++;
+            const f = `${pad2(d)}/${pad2(mo)}/${y}`;
+            if(!primera) primera = f;
+            ultima = f;
+          } else { nFuera++; }
+        }
+      });
+      i += 2;
+    } else { i += 1; }
+  }
+
+  if(nActualizados + nSinMeta === 0){
+    mostrarEstado('metas', nVacios ? `El archivo trae ${nVacios} día(s) de ${MESES[state.month-1]} pero sin valor de meta todavía (celdas vacías); no se cambió nada.` : 'No se encontraron fechas del mes/año seleccionado en el archivo. Revisa el mes/año arriba.', true);
+    return;
+  }
+
+  await guardarDatosMes();
+  renderTabla(); renderResumen();
+  mostrarEstado('metas', `Metas importadas para ${MESES[state.month-1]} ${state.year}: ${nActualizados} días con meta, ${nSinMeta} marcados sin meta ("No Aplica")${nVacios ? `, ${nVacios} sin valor todavía (se dejaron como estaban)` : ''}, ${nFuera} fechas fuera del mes ignoradas.`, false);
+}
+
+/* ---------------- Exportar a Excel ---------------- */
+document.getElementById('btnExcel').addEventListener('click', async ()=>{
+  try{ await asegurarXLSX(); }catch(err){ alert(err.message); return; }
+  const dias = diasEnMes(state.year, state.month);
+  const vends = state.config.vendedores;
+
+  const tramosOrd = [...state.config.tramos].sort((a,b)=>a.pct-b.pct);
+  const encabezado1 = ['Día','Fecha','Meta del día','Venta neta total','% Cumpl.','Tramo', ...tramosOrd.map(t=>`Falta ≥${Math.round(t.pct*100)}%`)];
+  vends.forEach(v=> encabezado1.push(`${v.nombre} (ID ${v.id})`, '', ''));
+  const encabezado2 = new Array(6 + tramosOrd.length).fill('');
+  vends.forEach(()=> encabezado2.push('Venta c/IVA','Venta neta','Bono'));
+
+  const filas = [encabezado1, encabezado2];
+  for(let d=1; d<=dias; d++){
+    const meta = state.datos.metas[d] || 0;
+    const pct = pctDia(d);
+    const tramo = tramoAlcanzado(pct);
+    const fila = [d, fechaDia(state.year, state.month, d), meta, Math.round(ventaTotalNetaDia(d)), Math.round(pct*10000)/10000, tramo ? tramo.pct : ''];
+    tramosOrd.forEach(t=> fila.push(Math.round(faltaParaTramo(d, t))));
+    vends.forEach(v=>{
+      const iva = state.datos.ventasIva[`${v.id}-${d}`] || 0;
+      fila.push(iva, Math.round(ventaNeta(v.id,d)), Math.round(bonoVendorDia(v.id,d)));
+    });
+    filas.push(fila);
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(filas);
+  const colVendedoresInicio = 6 + tramosOrd.length;
+  ws['!merges'] = vends.map((v,i)=>({ s:{r:0,c:colVendedoresInicio+i*3}, e:{r:0,c:colVendedoresInicio+i*3+2} }));
+  ws['!cols'] = [{wch:5},{wch:9},{wch:12},{wch:13},{wch:9},{wch:8}].concat(tramosOrd.map(()=>({wch:11}))).concat(vends.flatMap(()=>[{wch:11},{wch:11},{wch:9}]));
+
+  const resFilas = [['ID','Vendedora','Venta c/IVA mes','Venta neta mes','Bono mes']];
+  vends.forEach(v=>{
+    let sIva=0, sNeta=0, sBono=0;
+    for(let d=1; d<=dias; d++){
+      sIva += state.datos.ventasIva[`${v.id}-${d}`] || 0;
+      sNeta += ventaNeta(v.id,d);
+      sBono += bonoVendorDia(v.id,d);
+    }
+    resFilas.push([v.id, v.nombre, Math.round(sIva), Math.round(sNeta), Math.round(sBono)]);
+  });
+  const wsRes = XLSX.utils.aoa_to_sheet(resFilas);
+  wsRes['!cols'] = [{wch:8},{wch:14},{wch:14},{wch:14},{wch:12}];
+
+  // hoja de días con bono, por vendedora
+  const bonosFilas = [['ID','Vendedora','Fecha','Venta neta','% tienda alcanzado','Bono']];
+  vends.forEach(v=>{
+    for(let d=1; d<=dias; d++){
+      const bono = bonoVendorDia(v.id, d);
+      if(bono > 0){
+        bonosFilas.push([v.id, v.nombre, fechaDia(state.year, state.month, d), Math.round(ventaNeta(v.id,d)), Math.round(pctDia(d)*10000)/10000, Math.round(bono)]);
+      }
+    }
+  });
+  const wsBonos = XLSX.utils.aoa_to_sheet(bonosFilas);
+  wsBonos['!cols'] = [{wch:8},{wch:14},{wch:9},{wch:11},{wch:14},{wch:9}];
+
+  const wb2 = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb2, ws, 'Seguimiento');
+  XLSX.utils.book_append_sheet(wb2, wsRes, 'Resumen');
+  XLSX.utils.book_append_sheet(wb2, wsBonos, 'Bonos');
+  XLSX.writeFile(wb2, `seguimiento_venta_soai_${state.year}-${pad2(state.month)}.xlsx`);
+});
+
+/* ---------------- Imprimir ---------------- */
+document.getElementById('btnImprimir').addEventListener('click', ()=> window.print());
+
+/* ---------------- Respaldos: archivo (plano o cifrado) y GitHub ---------------- */
+function fechaHoyCompacta(){
+  const f = new Date();
+  return `${f.getFullYear()}${pad2(f.getMonth()+1)}${pad2(f.getDate())}`;
+}
+const _enc = new TextEncoder(), _dec = new TextDecoder();
+function aB64(buf){
+  const b = new Uint8Array(buf); let s = '';
+  for(let i=0; i<b.length; i+=0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i+0x8000));
+  return btoa(s);
+}
+function deB64(s){
+  const bin = atob(s); const b = new Uint8Array(bin.length);
+  for(let i=0; i<bin.length; i++) b[i] = bin.charCodeAt(i);
+  return b;
+}
+async function derivarClave(pass, salt, iter){
+  const base = await crypto.subtle.importKey('raw', _enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:iter, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function cifrarTexto(texto, pass){
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const iter = 310000;
+  const key = await derivarClave(pass, salt, iter);
+  const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, _enc.encode(texto));
+  return { formato:'respaldo-cifrado', v:1, kdf:'PBKDF2-SHA256', iter, salt:aB64(salt), iv:aB64(iv), datos:aB64(ct) };
+}
+function esContenedorCifrado(o){
+  return !!o && typeof o === 'object' && o.formato === 'respaldo-cifrado' &&
+    typeof o.datos === 'string' && typeof o.salt === 'string' && typeof o.iv === 'string';
+}
+async function descifrarContenedor(o, pass){
+  const iter = Math.trunc(numOk(o.iter, 0));
+  if(iter < 100000 || iter > 2000000) throw new Error('El archivo cifrado tiene parámetros no válidos.');
+  const key = await derivarClave(pass, deB64(o.salt), iter);
+  try{
+    const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:deB64(o.iv)}, key, deB64(o.datos));
+    return _dec.decode(pt);
+  }catch(e){
+    throw new Error('Contraseña incorrecta o archivo dañado.');
+  }
+}
+
+function reunirRespaldo(){
+  const out = {};
+  const prefijo = 'soai:' + _archivoId + ':';
+  try{
+    for(let i=0; i<localStorage.length; i++){
+      const key = localStorage.key(i);
+      if(key && key.startsWith(prefijo)){
+        const k = key.slice(prefijo.length);
+        if(k === 'config' || RE_CLAVE_DATOS.test(k)) out[k] = localStorage.getItem(key);
+      }
+    }
+  }catch(e){}
+  Object.keys(_memoriaRespaldo).forEach(k=>{
+    if((k === 'config' || RE_CLAVE_DATOS.test(k)) && out[k] === undefined) out[k] = _memoriaRespaldo[k];
+  });
+  if(!out.config) out.config = JSON.stringify(state.config);
+  const kMes = claveMes(state.year, state.month);
+  if(!out[kMes] && (Object.keys(state.datos.metas).length || Object.keys(state.datos.ventasIva).length)) out[kMes] = JSON.stringify(state.datos);
+  return out;
+}
+function descargarTexto(nombre, texto){
+  const blob = new Blob([texto], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nombre;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+
+// Aplica un respaldo (objeto con "config" y "datos-AAAA-MM"), saneando todo y
+// ignorando cualquier otra clave (así un respaldo ajeno no puede tocar ajustes como el token).
+async function aplicarRespaldo(contenido){
+  if(!contenido || typeof contenido !== 'object' || Array.isArray(contenido)) throw new Error('El archivo no parece un respaldo de esta app.');
+  const validos = {};
+  Object.keys(contenido).forEach(k=>{
+    if(!(k === 'config' || RE_CLAVE_DATOS.test(k))) return;
+    let v = contenido[k];
+    if(typeof v === 'string'){ try{ v = JSON.parse(v); }catch(e){ return; } }
+    if(!v || typeof v !== 'object') return;
+    validos[k] = (k === 'config') ? sanitizarConfig(v) : sanitizarDatos(v);
+  });
+  const claves = Object.keys(validos);
+  if(!claves.length) throw new Error('El respaldo no trae configuración ni meses reconocibles.');
+  const meses = claves.filter(k=>k !== 'config').sort();
+  const aviso = `Vas a restaurar:\n- Configuración (vendedoras, tramos, título)${validos.config ? '' : ' (no incluida)'}\n- ${meses.length} mes(es): ${meses.map(k=>k.replace('datos-','')).join(', ') || '(ninguno)'}\n\nEsto reemplaza los datos actuales de este dispositivo para esas claves. ¿Continuar?`;
+  if(!confirm(aviso)) return false;
+  claves.forEach(k=> storageLocal.set(k, JSON.stringify(validos[k])));
+  state.config = await cargarConfig();
+  document.getElementById('nombreTienda').value = state.config.nombreTienda || '';
+  document.getElementById('tituloApp').value = state.config.titulo || 'Seguimiento de Venta y Bonos SOAI';
+  actualizarEtiquetasTitulo();
+  state.datos = await cargarDatosMes(state.year, state.month);
+  renderPanelVendedoras(); renderPanelTramos(); renderTabla(); renderResumen();
+  mostrarToast('Respaldo restaurado');
+  return true;
+}
+
+/* ----- ventana de respaldos ----- */
+const $r = id => document.getElementById(id);
+function mrEstado(msg, esError){
+  const el = $r('mrEstado');
+  el.textContent = msg;
+  el.className = 'estado ' + (esError ? 'err' : 'ok');
+}
+function cargarAjustesGh(){
+  let g = {};
+  try{ g = JSON.parse(storageLocal.get('gh') || '{}') || {}; }catch(e){}
+  $r('ghOwner').value = g.owner || '';
+  $r('ghRepo').value = g.repo || '';
+  $r('ghRama').value = g.rama || 'main';
+  $r('ghRuta').value = g.ruta || 'respaldos/respaldo-seguimiento.enc.json';
+  $r('ghToken').value = g.token || '';
+  $r('ghRecordar').checked = !!g.recordar;
+}
+function abrirResp(){
+  cargarAjustesGh();
+  $r('mrEstado').className = 'estado';
+  $r('modalResp').hidden = false;
+}
+function cerrarResp(){
+  $r('modalResp').hidden = true;
+  $r('mrPass').value = '';
+  $r('ghToken').value = '';
+}
+$r('btnRespaldos').addEventListener('click', abrirResp);
+$r('mrCerrar').addEventListener('click', cerrarResp);
+$r('modalResp').addEventListener('click', e=>{ if(e.target.id === 'modalResp') cerrarResp(); });
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && !$r('modalResp').hidden) cerrarResp(); });
+
+function exigirClave(){
+  const p = $r('mrPass').value;
+  if(p.length < 8) throw new Error('Escribe una contraseña de cifrado de al menos 8 caracteres.');
+  return p;
+}
+async function conBoton(btn, fn){
+  btn.disabled = true;
+  try{ await fn(); }
+  catch(err){ console.error(err); mrEstado(err && err.message ? err.message : String(err), true); }
+  finally{ btn.disabled = false; }
+}
+
+$r('mrBajarCifrado').addEventListener('click', e=> conBoton(e.currentTarget, async ()=>{
+  const pass = exigirClave();
+  const cont = await cifrarTexto(JSON.stringify(reunirRespaldo()), pass);
+  descargarTexto(`respaldo_cifrado_${fechaHoyCompacta()}.enc.json`, JSON.stringify(cont, null, 2));
+  mrEstado('Respaldo cifrado descargado. Guarda también la contraseña en un lugar seguro.', false);
+}));
+$r('mrBajarPlano').addEventListener('click', e=> conBoton(e.currentTarget, async ()=>{
+  descargarTexto(`respaldo_${fechaHoyCompacta()}.json`, JSON.stringify(reunirRespaldo(), null, 2));
+  mrEstado('Respaldo descargado SIN cifrar. Cualquiera que tenga el archivo puede leerlo.', false);
+}));
+$r('mrArchivo').addEventListener('change', async e=>{
+  const file = e.target.files[0];
+  e.target.value = '';
+  if(!file) return;
+  await conBoton($r('mrBajarCifrado'), async ()=>{
+    let obj;
+    try{ obj = JSON.parse(await file.text()); }
+    catch(err){ throw new Error('El archivo no es un JSON válido.'); }
+    if(esContenedorCifrado(obj)){
+      const p = $r('mrPass').value;
+      if(!p) throw new Error('El archivo está cifrado: escribe la contraseña arriba y vuelve a cargarlo.');
+      obj = JSON.parse(await descifrarContenedor(obj, p));
+    }
+    const ok = await aplicarRespaldo(obj);
+    if(ok){ mrEstado('Respaldo restaurado correctamente.', false); }
+  });
+});
+
+/* ----- GitHub ----- */
+function leerGh(){
+  const v = id => $r(id).value.trim();
+  return { owner:v('ghOwner'), repo:v('ghRepo'), rama:v('ghRama') || 'main', ruta:v('ghRuta').replace(/^\/+/, ''), token:v('ghToken') };
+}
+function validarGh(c){
+  if(!c.owner || !c.repo || !c.ruta || !c.token) throw new Error('Completa usuario, repositorio, archivo y token de GitHub.');
+  if(!/^[\w.-]+$/.test(c.owner) || !/^[\w.-]+$/.test(c.repo)) throw new Error('Usuario o repositorio con caracteres no válidos.');
+  if(c.ruta.split('/').some(p=>p === '..' || p === '')) throw new Error('La ruta del archivo no es válida.');
+}
+function guardarAjustesGh(c){
+  const recordar = $r('ghRecordar').checked;
+  storageLocal.set('gh', JSON.stringify({owner:c.owner, repo:c.repo, rama:c.rama, ruta:c.ruta, recordar, token: recordar ? c.token : ''}));
+}
+function ghUrl(c){
+  return `https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}/contents/${c.ruta.split('/').map(encodeURIComponent).join('/')}`;
+}
+function ghHeaders(c, extra){
+  return Object.assign({'Authorization':'Bearer ' + c.token, 'Accept':'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'}, extra || {});
+}
+async function ghFetch(url, opciones){
+  if(navigator.onLine === false) throw new Error('Sin conexión: el respaldo en GitHub necesita internet. Tus datos siguen guardados en el dispositivo (usa "Descargar cifrado" mientras tanto).');
+  try{ return await fetch(url, opciones); }
+  catch(e){ throw new Error('No se pudo conectar con GitHub (sin conexión o bloqueado por el navegador).'); }
+}
+async function ghError(r){
+  let detalle = '';
+  try{ const j = await r.json(); detalle = j && j.message ? ` (${j.message})` : ''; }catch(e){}
+  if(r.status === 401) return 'GitHub rechazó el token (inválido o vencido).' + detalle;
+  if(r.status === 403) return 'GitHub denegó el acceso: el token no tiene permiso de escritura o se alcanzó un límite de uso.' + detalle;
+  if(r.status === 404) return 'No se encontró el repositorio o la rama, o el token no tiene acceso a ese repositorio.' + detalle;
+  if(r.status === 409 || r.status === 422) return 'Conflicto al guardar en GitHub; inténtalo de nuevo.' + detalle;
+  return `GitHub respondió con error ${r.status}.` + detalle;
+}
+async function ghObtener(c){
+  const r = await ghFetch(ghUrl(c) + '?ref=' + encodeURIComponent(c.rama), {headers: ghHeaders(c)});
+  if(r.status === 404){
+    // 404 puede ser "archivo nuevo" o "repo/rama inexistente": lo distinguimos al subir.
+    return null;
+  }
+  if(!r.ok) throw new Error(await ghError(r));
+  return r.json();
+}
+$r('ghSubir').addEventListener('click', e=> conBoton(e.currentTarget, async ()=>{
+  const c = leerGh(); validarGh(c);
+  const pass = exigirClave();
+  guardarAjustesGh(c);
+  const texto = JSON.stringify(await cifrarTexto(JSON.stringify(reunirRespaldo()), pass), null, 2);
+  const actual = await ghObtener(c);
+  const cuerpo = { message:`Respaldo ${new Date().toISOString()}`, content:aB64(_enc.encode(texto)), branch:c.rama };
+  if(actual && actual.sha) cuerpo.sha = actual.sha;
+  const r = await ghFetch(ghUrl(c), {method:'PUT', headers:ghHeaders(c, {'Content-Type':'application/json'}), body:JSON.stringify(cuerpo)});
+  if(!r.ok) throw new Error(await ghError(r));
+  mrEstado(`Respaldo cifrado subido a GitHub (${c.owner}/${c.repo}, ${c.ruta}).`, false);
+}));
+$r('ghBajar').addEventListener('click', e=> conBoton(e.currentTarget, async ()=>{
+  const c = leerGh(); validarGh(c);
+  const pass = $r('mrPass').value;
+  if(!pass) throw new Error('Escribe la contraseña de cifrado con la que se guardó el respaldo.');
+  guardarAjustesGh(c);
+  const actual = await ghObtener(c);
+  if(!actual) throw new Error('No hay un respaldo en esa ruta del repositorio (o el repositorio/rama no existe).');
+  let texto;
+  if(actual.content){
+    texto = _dec.decode(deB64(String(actual.content).replace(/\s/g, '')));
+  } else {
+    const r = await ghFetch(ghUrl(c) + '?ref=' + encodeURIComponent(c.rama), {headers: ghHeaders(c, {'Accept':'application/vnd.github.raw+json'})});
+    if(!r.ok) throw new Error(await ghError(r));
+    texto = await r.text();
+  }
+  let obj;
+  try{ obj = JSON.parse(texto); }catch(err){ throw new Error('El archivo de GitHub no es un respaldo válido.'); }
+  if(!esContenedorCifrado(obj)) throw new Error('El archivo de GitHub no es un respaldo cifrado de esta app.');
+  const plano = JSON.parse(await descifrarContenedor(obj, pass));
+  const ok = await aplicarRespaldo(plano);
+  if(ok) mrEstado('Respaldo descargado desde GitHub y restaurado.', false);
+}));
+
+/* ---------------- Ingreso de venta de un día (manual o pegando el reporte) ---------------- */
+function parseMontoCL(s){
+  let t = String(s == null ? '' : s).trim().replace(/[\s$]/g, '');
+  if(!t) return 0;
+  if(/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g, '').replace(',', '.');
+  else if(/^\d+(,\d+)?$/.test(t)) t = t.replace(',', '.');
+  else if(!/^\d+(\.\d{1,2})?$/.test(t)) return 0;
+  const n = parseFloat(t);
+  return Number.isFinite(n) ? n : 0;
+}
+let drModoFoto = false;
+function drDia(){
+  const v = $r('drFecha').value;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || '');
+  if(!m) return null;
+  if(+m[1] !== state.year || +m[2] !== state.month) return null;
+  const d = +m[3];
+  return (d >= 1 && d <= diasEnMes(state.year, state.month)) ? d : null;
+}
+function drNombre(id){
+  const v = state.config.vendedores.find(x=>x.id === id);
+  return v ? v.nombre : null;
+}
+function drActualizarNombre(fila){
+  const id = parseInt(fila.querySelector('.dr-id').value, 10);
+  const el = fila.querySelector('.dr-nom');
+  if(!id){ el.textContent = ''; el.className = 'dr-nom'; return; }
+  const n = drNombre(id);
+  el.textContent = n || 'Sin vendedora asignada';
+  el.className = 'dr-nom' + (n ? '' : ' sin');
+}
+function drAgregarFila(id, monto){
+  const fila = document.createElement('div');
+  fila.className = 'dr-row';
+  fila.innerHTML = `<input type="number" class="dr-id" inputmode="numeric" placeholder="ID" value="${id === '' ? '' : esc(id)}">` +
+    `<span class="dr-nom"></span>` +
+    `<input type="text" class="dr-monto" inputmode="numeric" autocomplete="off" placeholder="0" value="${monto === '' ? '' : esc(monto)}">` +
+    `<button type="button" class="btn-x dr-x" title="Quitar fila">✕</button>`;
+  $r('drFilas').appendChild(fila);
+  drActualizarNombre(fila);
+  return fila;
+}
+function drLeerFilas(){
+  return [...$r('drFilas').querySelectorAll('.dr-row')].map(f=>({
+    fila: f,
+    id: parseInt(f.querySelector('.dr-id').value, 10) || 0,
+    monto: parseMontoCL(f.querySelector('.dr-monto').value)
+  }));
+}
+function drCargarDia(){
+  drModoFoto = false;
+  $r('drRevisado').checked = false;
+  const dia = drDia();
+  $r('drFilas').innerHTML = '';
+  if(!dia){ drActualizar(); return; }
+  const existentes = [];
+  Object.keys(state.datos.ventasIva).forEach(k=>{
+    const i = k.lastIndexOf('-');
+    if(+k.substring(i+1) === dia) existentes.push({id: +k.substring(0, i), monto: state.datos.ventasIva[k]});
+  });
+  if(existentes.length){
+    const orden = state.config.vendedores.map(v=>v.id);
+    existentes.sort((a,b)=>{
+      const ia = orden.indexOf(a.id), ib = orden.indexOf(b.id);
+      return (ia < 0 ? 1e6 : ia) - (ib < 0 ? 1e6 : ib) || a.id - b.id;
+    });
+    existentes.forEach(e=> drAgregarFila(e.id, e.monto));
+  } else {
+    state.config.vendedores.forEach(v=> drAgregarFila(v.id, ''));
+  }
+  drActualizar();
+}
+function drActualizar(){
+  const dia = drDia();
+  const filas = drLeerFilas();
+  const validas = filas.filter(f=>f.id > 0 && f.monto > 0);
+  const conteo = {};
+  validas.forEach(f=>{ conteo[f.id] = (conteo[f.id] || 0) + 1; });
+  const repetidos = Object.keys(conteo).filter(id=>conteo[id] > 1);
+  const suma = validas.reduce((s,f)=>s + f.monto, 0);
+  const neta = suma / factorIva();
+  const meta = dia ? (state.datos.metas[dia] || 0) : 0;
+  const pct = meta > 0 ? neta / meta : 0;
+  const tr = meta > 0 ? tramoAlcanzado(pct) : null;
+  $r('drResumen').innerHTML =
+    `<div class="fila"><span>Suma con IVA</span><b>${formatoMoneda(suma)}</b></div>` +
+    `<div class="fila"><span>Venta neta (sin IVA ${state.config.ivaPct}%)</span><b>${formatoMoneda(neta)}</b></div>` +
+    `<div class="fila"><span>Meta del día</span><b>${meta ? formatoMoneda(meta) : '—'}</b></div>` +
+    `<div class="fila"><span>Cumplimiento</span><b>${meta ? formatoPct(pct) + (tr ? ' · tramo ≥' + formatoPct(tr.pct) : ' · sin tramo') : '—'}</b></div>`;
+  const msgs = [];
+  if(!dia) msgs.push(['err', `Elige un día de ${MESES[state.month-1]} ${state.year}.`]);
+  const totalRep = parseMontoCL($r('drTotalRep').value);
+  if($r('drTotalRep').value.trim() && totalRep > 0){
+    const dif = Math.round(suma - totalRep);
+    msgs.push(dif === 0 ? ['ok', '✓ La suma coincide con el total del reporte.']
+                        : ['err', `⚠ La suma (${formatoMoneda(suma)}) no coincide con el total del reporte (${formatoMoneda(totalRep)}): diferencia de ${formatoMoneda(Math.abs(dif))}.`]);
+  }
+  if(drModoFoto) msgs.push(['aviso', 'Leído desde una foto: compara cada ID y monto con la foto (tócala para ampliarla) y marca la casilla de revisión. Un ID mal leído mandaría la venta a otra persona.']);
+  $r('drRevisarWrap').hidden = !drModoFoto;
+  if(repetidos.length) msgs.push(['err', `ID repetido: ${repetidos.join(', ')}. Deja una sola fila por vendedor.`]);
+  const sinAsignar = validas.filter(f=>!drNombre(f.id)).map(f=>f.id);
+  if(sinAsignar.length) msgs.push(['aviso', `ID sin vendedora asignada (${sinAsignar.join(', ')}): igual suma a la venta total del día. Después puedes agregarlo como vendedora desde "Ventas sin asignar".`]);
+  if(dia && Object.keys(state.datos.ventasIva).some(k=>+k.substring(k.lastIndexOf('-')+1) === dia)){
+    msgs.push(['aviso', 'Este día ya tiene venta cargada: al guardar se reemplaza por completo con lo que ves aquí.']);
+  }
+  $r('drMensajes').innerHTML = msgs.map(([c,t])=>`<div class="dr-msg ${c}">${esc(t)}</div>`).join('');
+  return {dia, validas, repetidos, suma};
+}
+// Lee texto pegado del reporte (o copiado de una foto con el lector de texto del teléfono).
+// Tolera ruido típico de esos lectores ("«169.236", letras sueltas, "Tota1"...).
+// Si hay líneas que empiezan con "Total", usa solo esas (ignora Sub-Total y las líneas de
+// productos); si no, usa cualquier línea con un ID y un monto. Devuelve también las líneas
+// que no se usaron, para buscar entre ellas el total general del reporte.
+function drTokens(l){ return l.split(/\s+/).map(t=>t.replace(/[^\d.,]/g, '')).filter(Boolean); }
+function drParsearTexto(texto){
+  const lineas = String(texto || '').split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const esTotal = l => /^t[o0]ta[l1i]\b/i.test(l);
+  const conTotal = lineas.filter(esTotal);
+  const candidatas = conTotal.length ? conTotal : lineas.filter(l=>!/^sub/i.test(l));
+  const filas = [], usadas = new Set();
+  candidatas.forEach(l=>{
+    const tk = drTokens(l);
+    const iId = tk.findIndex(t=>/^\d{4,7}$/.test(t));
+    if(iId < 0) return;
+    let iMonto = -1;
+    for(let i=tk.length-1; i>iId; i--){ if(/^\d[\d.,]*$/.test(tk[i])){ iMonto = i; break; } }
+    if(iMonto < 0) return;
+    const monto = parseMontoCL(tk[iMonto]);
+    if(monto > 0){ filas.push({id: parseInt(tk[iId], 10), monto}); usadas.add(l); }
+  });
+  return { filas, sobrantes: lineas.filter(l=>!usadas.has(l) && !/^sub/i.test(l)) };
+}
+// Busca, entre las líneas no usadas, un número igual a la suma: sería el total general del reporte.
+function drBuscarTotal(sobrantes, suma){
+  for(const l of sobrantes){
+    for(const t of drTokens(l)){
+      const v = parseMontoCL(t);
+      if(v > 0 && Math.abs(v - suma) < 0.5) return v;
+    }
+  }
+  return null;
+}
+function drAbrir(){
+  const mm = pad2(state.month), ult = diasEnMes(state.year, state.month);
+  $r('drFecha').min = `${state.year}-${mm}-01`;
+  $r('drFecha').max = `${state.year}-${mm}-${pad2(ult)}`;
+  const h = new Date();
+  const dia = (h.getFullYear() === state.year && h.getMonth()+1 === state.month) ? h.getDate() : 1;
+  $r('drFecha').value = `${state.year}-${mm}-${pad2(dia)}`;
+  $r('drTotalRep').value = '';
+  $r('drPegar').value = '';
+  $r('drFotoEstado').hidden = true;
+  const prev = $r('drFotoPrev'); prev.hidden = true; prev.classList.remove('zoom');
+  drCargarDia();
+  $r('modalDia').hidden = false;
+}
+function drCerrar(){ $r('modalDia').hidden = true; }
+async function drGuardar(){
+  const r = drActualizar();
+  if(!r.dia){ return; }
+  if(r.repetidos.length){ return; }
+  if(drModoFoto && !$r('drRevisado').checked){
+    $r('drMensajes').insertAdjacentHTML('beforeend', '<div class="dr-msg err">Marca la casilla "Revisé cada ID y cada monto con la foto" para poder guardar.</div>');
+    return;
+  }
+  if(!r.validas.length && !confirm('No hay ninguna venta con monto. ¿Dejar este día sin ventas?')) return;
+  const dia = r.dia;
+  Object.keys(state.datos.ventasIva).forEach(k=>{ if(+k.substring(k.lastIndexOf('-')+1) === dia) delete state.datos.ventasIva[k]; });
+  r.validas.forEach(f=>{ state.datos.ventasIva[`${f.id}-${dia}`] = f.monto; });
+  await guardarDatosMes();
+  renderTabla(); renderResumen();
+  drCerrar();
+  mostrarEstado('venta', `Venta del ${pad2(dia)}/${pad2(state.month)}/${state.year} guardada a mano: ${r.validas.length} vendedor(es), ${formatoMoneda(r.suma)} con IVA (${formatoMoneda(r.suma / factorIva())} neto).`, false);
+}
+$r('btnIngresarDia').addEventListener('click', drAbrir);
+$r('drCerrar').addEventListener('click', drCerrar);
+$r('drCancelar').addEventListener('click', drCerrar);
+$r('modalDia').addEventListener('click', e=>{ if(e.target.id === 'modalDia') drCerrar(); });
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && !$r('modalDia').hidden) drCerrar(); });
+$r('drFecha').addEventListener('change', drCargarDia);
+$r('drTotalRep').addEventListener('input', drActualizar);
+$r('drAgregar').addEventListener('click', ()=>{ const f = drAgregarFila('', ''); drActualizar(); f.querySelector('.dr-id').focus(); });
+$r('drFilas').addEventListener('input', e=>{
+  const f = e.target.closest('.dr-row');
+  if(f && e.target.classList.contains('dr-id')) drActualizarNombre(f);
+  drActualizar();
+});
+$r('drFilas').addEventListener('click', e=>{
+  if(e.target.classList.contains('dr-x')){ e.target.closest('.dr-row').remove(); drActualizar(); }
+});
+// Aplica un texto leído (pegado o de la foto): llena las filas y, si encuentra en el texto
+// un número igual a la suma (el total general del reporte), lo usa para verificar.
+function drAplicarTexto(texto){
+  const leido = drParsearTexto(texto);
+  const lista = leido.filas;
+  if(!lista.length) return false;
+  lista.forEach(({id, monto})=>{
+    const existente = drLeerFilas().find(f=>f.id === id);
+    if(existente) existente.fila.querySelector('.dr-monto').value = monto;
+    else drAgregarFila(id, monto);
+  });
+  // quita filas de vendedoras que quedaron vacías, para que se vea solo lo leído
+  drLeerFilas().forEach(f=>{ if(!f.id || !f.monto) f.fila.remove(); });
+  const suma = lista.reduce((s,f)=>s + f.monto, 0);
+  const tot = drBuscarTotal(leido.sobrantes, suma);
+  if(tot && !$r('drTotalRep').value.trim()) $r('drTotalRep').value = Math.round(tot).toLocaleString('es-CL');
+  drActualizar();
+  return true;
+}
+$r('drLeerPegado').addEventListener('click', ()=>{
+  drModoFoto = false;
+  $r('drRevisado').checked = false;
+  if(!drAplicarTexto($r('drPegar').value)){
+    $r('drMensajes').innerHTML = '<div class="dr-msg err">No se encontraron filas con ID y monto en el texto pegado.</div>';
+  }
+});
+
+/* ----- Lectura de una foto (lector de texto Tesseract, archivos propios en la carpeta "ocr") ----- */
+// Pasa a gris y estira el contraste (recorta el 1% más oscuro y el 1% más claro).
+function drEstirarContraste(d){
+  const hist = new Uint32Array(256), n = d.length / 4;
+  for(let i=0; i<d.length; i+=4){
+    const g = (d[i]*299 + d[i+1]*587 + d[i+2]*114) / 1000 | 0;
+    d[i] = d[i+1] = d[i+2] = g; hist[g]++;
+  }
+  const corte = n * 0.01;
+  let acc = 0, lo = 0, hi = 255;
+  for(let v=0; v<256; v++){ acc += hist[v]; if(acc >= corte){ lo = v; break; } }
+  acc = 0;
+  for(let v=255; v>=0; v--){ acc += hist[v]; if(acc >= corte){ hi = v; break; } }
+  if(hi - lo < 30) return;
+  const k = 255 / (hi - lo);
+  for(let i=0; i<d.length; i+=4){
+    const v = Math.max(0, Math.min(255, (d[i] - lo) * k));
+    d[i] = d[i+1] = d[i+2] = v;
+  }
+}
+function drCargarImagen(file){
+  return new Promise((res, rej)=>{
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = ()=>{ URL.revokeObjectURL(url); res(img); };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); rej(new Error('No se pudo abrir la imagen.')); };
+    img.src = url;
+  });
+}
+async function drPrepararImagen(file){
+  let fuente;
+  try{ fuente = await createImageBitmap(file); }catch(e){ fuente = await drCargarImagen(file); }
+  const ancho0 = fuente.width, alto0 = fuente.height;
+  if(!ancho0 || !alto0) throw new Error('La imagen está vacía.');
+  const f = 2200 / ancho0;               // sube las capturas chicas y baja las fotos enormes
+  const w = Math.round(ancho0 * f), h = Math.round(alto0 * f);
+  if(w * h > 40e6) throw new Error('La imagen es demasiado grande.');
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d', {willReadFrequently:true});
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(fuente, 0, 0, w, h);
+  const datos = ctx.getImageData(0, 0, w, h);
+  drEstirarContraste(datos.data);
+  ctx.putImageData(datos, 0, 0);
+  return c;
+}
+function drCargarScript(src){
+  return new Promise((res, rej)=>{
+    if(window.Tesseract) return res();
+    const s = document.createElement('script');
+    s.src = src; s.onload = res;
+    s.onerror = ()=> rej(new Error('No se pudo cargar el lector de texto. Revisa que la carpeta "ocr" esté publicada junto a index.html.'));
+    document.head.appendChild(s);
+  });
+}
+const DR_ESTADOS_OCR = {'loading tesseract core':'Cargando el lector', 'initializing tesseract':'Iniciando el lector', 'loading language traineddata':'Cargando el idioma', 'initializing api':'Iniciando', 'recognizing text':'Leyendo la foto'};
+async function drCrearOcr(progreso){
+  await drCargarScript('ocr/tesseract.min.js');
+  const worker = await window.Tesseract.createWorker('eng', 1, {
+    workerPath: 'ocr/worker.min.js',
+    corePath: 'ocr/tesseract-core-lstm.wasm.js',
+    langPath: 'ocr/lang',
+    workerBlobURL: false,
+    gzip: true,
+    logger: m=>{ if(m && typeof m.progress === 'number') progreso(`${DR_ESTADOS_OCR[m.status] || 'Procesando'}… ${Math.round(m.progress*100)}%`); }
+  });
+  await worker.setParameters({tessedit_pageseg_mode:'6', preserve_interword_spaces:'1'});
+  return worker;
+}
+function drConLimite(promesa, ms, mensaje){
+  let t;
+  const limite = new Promise((_, rej)=>{ t = setTimeout(()=>rej(new Error(mensaje)), ms); });
+  return Promise.race([promesa, limite]).finally(()=>clearTimeout(t));
+}
+let drFotoOcupada = false;
+async function drProcesarFoto(file){
+  if(!file || drFotoOcupada) return;
+  const est = (txt, clase)=>{ const e = $r('drFotoEstado'); e.hidden = false; e.className = 'dr-msg ' + (clase || 'aviso'); e.textContent = txt; };
+  drFotoOcupada = true;
+  let worker = null;
+  try{
+    const prev = $r('drFotoPrev');
+    if(prev.dataset.url) URL.revokeObjectURL(prev.dataset.url);
+    const url = URL.createObjectURL(file);
+    prev.src = url; prev.dataset.url = url; prev.hidden = false; prev.classList.remove('zoom');
+    est('Preparando la imagen…');
+    const lienzo = await drPrepararImagen(file);
+    est('Cargando el lector de texto (la primera vez puede tardar)…');
+    worker = await drConLimite(drCrearOcr(txt=>est(txt)), 120000, 'El lector tardó demasiado en cargar.');
+    est('Leyendo la foto…');
+    const r = await drConLimite(worker.recognize(lienzo), 120000, 'La lectura tardó demasiado.');
+    const texto = (r && r.data && r.data.text) || '';
+    $r('drPegar').value = texto;
+    $r('drDetallePegar').open = true;
+    drModoFoto = true;
+    $r('drRevisado').checked = false;
+    if(drAplicarTexto(texto)){
+      est('Lectura lista. Revisa cada fila comparándola con la foto.', 'ok');
+    } else {
+      drModoFoto = false; drActualizar();
+      est('No pude leer filas "Total" con un ID y un monto. Prueba con una foto más recta, de cerca y bien iluminada (que se vean solo las líneas de Total), o copia el texto con el lector del teléfono y pégalo abajo.', 'err');
+    }
+  }catch(err){
+    console.error(err);
+    est((err && err.message ? err.message : 'No se pudo leer la foto.') + ' Puedes copiar el texto con el lector del teléfono y pegarlo abajo.', 'err');
+  }finally{
+    try{ if(worker) await worker.terminate(); }catch(e){}
+    drFotoOcupada = false;
+  }
+}
+['drFotoCam', 'drFotoGal'].forEach(id=>{
+  $r(id).addEventListener('change', e=>{
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if(f) drProcesarFoto(f);
+  });
+});
+$r('drFotoPrev').addEventListener('click', ()=> $r('drFotoPrev').classList.toggle('zoom'));
+
+/* ---------------- App instalable y modo sin conexión ---------------- */
+if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(err=>console.warn('Sin modo sin conexión:', err)); });
+}
+if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
+let _promptInstalar = null;
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault();
+  _promptInstalar = e;
+  $r('btnInstalar').hidden = false;
+});
+$r('btnInstalar').addEventListener('click', async ()=>{
+  if(!_promptInstalar) return;
+  _promptInstalar.prompt();
+  try{ await _promptInstalar.userChoice; }catch(e){}
+  _promptInstalar = null;
+  $r('btnInstalar').hidden = true;
+});
+window.addEventListener('appinstalled', ()=>{ $r('btnInstalar').hidden = true; mostrarToast('App instalada'); });
+function actualizarConexion(){ renderEstadoBarra(); }
+window.addEventListener('online', actualizarConexion);
+window.addEventListener('offline', actualizarConexion);
+actualizarConexion();
+
+/* ---------------- Avisos de entorno (para entender por qué algo no funciona) ---------------- */
+function avisoTop(id, html, tipo){
+  const c = document.getElementById('avisos');
+  if(!c) return;
+  let el = document.getElementById(id);
+  if(!el){ el = document.createElement('div'); el.id = id; c.appendChild(el); }
+  el.className = 'aviso-top' + (tipo === 'err' ? ' err' : '');
+  el.innerHTML = html;
+}
+function probarAlmacenamiento(){
+  try{
+    const k = 'soai:__prueba';
+    localStorage.setItem(k, '1');
+    const ok = localStorage.getItem(k) === '1';
+    localStorage.removeItem(k);
+    return ok;
+  }catch(e){ return false; }
+}
+function revisarEntorno(){
+  if(!probarAlmacenamiento()){
+    _usandoRespaldo = true;
+    renderEstadoBarra();
+    avisoTop('av-alm', '<b>Este navegador no está permitiendo guardar datos aquí</b> (modo privado o restricción del navegador). Lo que ingreses se perderá al cerrar. Abre la app desde su dirección web o en una ventana normal, y mientras tanto usa <b>Respaldos → Descargar</b>.', 'err');
+  }
+  if(location.protocol === 'file:'){
+    let ruta = location.pathname;
+    try{ ruta = decodeURIComponent(location.pathname); }catch(e){}
+    if(/\/Temp\d*_[^\/]*\.zip\//i.test(ruta) || /\/AppData\/Local\/Temp\//i.test(ruta) || /\.zip[\/\\]/i.test(ruta) || /^\/(tmp|var\/folders)\//i.test(ruta)){
+      avisoTop('av-tmp', '<b>Estás abriendo la app desde una carpeta temporal</b> (por ejemplo, directamente dentro de un ZIP). Los datos se guardan según la ubicación del archivo, así que al abrirlo de nuevo pueden no aparecer. <b>Extrae la carpeta completa</b> (clic derecho → Extraer todo), muévela a un lugar fijo y ábrela desde ahí.', 'aviso');
+    }
+  }
+}
+window.addEventListener('load', async ()=>{
+  revisarEntorno();
+  if(!window.XLSX){
+    try{
+      await asegurarXLSX();
+      if(_xlsxDesdeInternet) avisoTop('av-xlsx', '<b>La librería de Excel se cargó desde internet</b> porque falta la carpeta <b>vendor</b> junto a index.html. Funciona con conexión; para usarla sin internet abre la app desde la carpeta completa (<b>soai-web</b>).', 'aviso');
+    }catch(err){
+      avisoTop('av-xlsx', '<b>No se puede importar ni exportar Excel:</b> falta la carpeta <b>vendor</b> junto a index.html (y no hay internet para suplirla). Usa la <b>carpeta completa</b> (soai-web), no el index.html suelto. El ingreso manual de ventas sí funciona.', 'err');
+    }
+  }
+});
+
+/* ---------------- Vistas móviles y menú ---------------- */
+function setVista(v){
+  document.body.dataset.vista = v;
+  document.querySelectorAll('#vistas button').forEach(b=> b.classList.toggle('activa', b.dataset.vista === v));
+}
+$r('vistas').addEventListener('click', e=>{
+  const b = e.target.closest('button[data-vista]');
+  if(b) setVista(b.dataset.vista);
+});
+$r('btnMenu').addEventListener('click', ()=> $r('toolbar').classList.toggle('abierto'));
+$r('toolbar').addEventListener('click', e=>{
+  if(e.target.closest('.tb-group')) setTimeout(()=> $r('toolbar').classList.remove('abierto'), 500);
+});
+
+/* ---------------- Expandir / contraer, mes actual ---------------- */
+document.getElementById('btnExpandir').addEventListener('click', ()=>{
+  document.querySelectorAll('#detalleVendedoras details').forEach(d=>{ d.open = true; });
+});
+document.getElementById('btnContraer').addEventListener('click', ()=>{
+  document.querySelectorAll('#detalleVendedoras details').forEach(d=>{ d.open = false; });
+});
+document.getElementById('btnMesActual').addEventListener('click', async ()=>{
+  const hoy = new Date();
+  state.year = hoy.getFullYear();
+  state.month = hoy.getMonth() + 1;
+  document.getElementById('selMes').value = state.month;
+  document.getElementById('selAnio').value = state.year;
+  state.datos = await cargarDatosMes(state.year, state.month);
+  renderTabla(); renderResumen();
+});
+
+/* ---------------- Init ---------------- */
+async function init(){
+  state.config = await cargarConfig();
+  document.getElementById('nombreTienda').value = state.config.nombreTienda || '';
+  document.getElementById('tituloApp').value = state.config.titulo || 'Seguimiento de Venta y Bonos SOAI';
+  actualizarEtiquetasTitulo();
+  state.datos = await cargarDatosMes(state.year, state.month);
+  inicializarSelectorPeriodo();
+  initFiltros();
+  setVista((typeof window.matchMedia === 'function' && window.matchMedia('(max-width:760px)').matches) ? 'resumen' : 'dias');
+  renderPanelVendedoras();
+  renderPanelTramos();
+  renderTabla();
+  renderResumen();
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
