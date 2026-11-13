@@ -552,6 +552,7 @@
         <label class="mr-check" id="drRevisarWrap" hidden><input type="checkbox" id="drRevisado"><span><b>Revisé cada ID y cada monto con la foto.</b> (Obligatorio: el lector puede confundir dígitos.)</span></label>
         <div id="drMensajes"></div>
       </section>
+      <div class="dr-msg err" id="drErrorGuardar" hidden style="margin:0 0 8px;"></div>
       <div class="mr-fila">
         <button class="btn" id="drGuardar" type="button">Guardar día</button>
         <button class="btn secondary" id="drCancelar" type="button">Cancelar</button>
@@ -2068,6 +2069,7 @@ function drBuscarTotal(sobrantes, suma){
   return null;
 }
 function drAbrir(){
+  $r('drErrorGuardar').hidden = true;
   const mm = pad2(state.month), ult = diasEnMes(state.year, state.month);
   $r('drFecha').min = `${state.year}-${mm}-01`;
   $r('drFecha').max = `${state.year}-${mm}-${pad2(ult)}`;
@@ -2082,23 +2084,39 @@ function drAbrir(){
   $r('modalDia').hidden = false;
 }
 function drCerrar(){ $r('modalDia').hidden = true; }
-async function drGuardar(){
-  const r = drActualizar();
-  if(!r.dia){ return; }
-  if(r.repetidos.length){ return; }
-  if(drModoFoto && !$r('drRevisado').checked){
-    $r('drMensajes').insertAdjacentHTML('beforeend', '<div class="dr-msg err">Marca la casilla "Revisé cada ID y cada monto con la foto" para poder guardar.</div>');
-    return;
-  }
-  if(!r.validas.length && !confirm('No hay ninguna venta con monto. ¿Dejar este día sin ventas?')) return;
-  const dia = r.dia;
-  Object.keys(state.datos.ventasIva).forEach(k=>{ if(+k.substring(k.lastIndexOf('-')+1) === dia) delete state.datos.ventasIva[k]; });
-  r.validas.forEach(f=>{ state.datos.ventasIva[`${f.id}-${dia}`] = f.monto; });
-  await guardarDatosMes();
-  renderTabla(); renderResumen();
-  drCerrar();
-  mostrarEstado('venta', `Venta del ${pad2(dia)}/${pad2(state.month)}/${state.year} guardada a mano: ${r.validas.length} vendedor(es), ${formatoMoneda(r.suma)} con IVA (${formatoMoneda(r.suma / factorIva())} neto).`, false);
+function drError(msg){
+  const e = $r('drErrorGuardar');
+  e.textContent = msg;
+  e.hidden = false;
+  try{ e.scrollIntoView({block:'nearest'}); }catch(_){}
 }
+async function drGuardar(){
+  $r('drErrorGuardar').hidden = true;
+  try{
+    const r = drActualizar();
+    if(!r.dia) return drError(`Elige un día de ${MESES[state.month-1]} ${state.year} en el selector "Día".`);
+    if(r.repetidos.length) return drError(`Hay un ID repetido (${r.repetidos.join(', ')}). Deja una sola fila por vendedor.`);
+    const filas = drLeerFilas();
+    const ilegibles = filas.filter(f=>f.fila.querySelector('.dr-monto').value.trim() && !f.monto);
+    if(ilegibles.length) return drError(`No entiendo el monto de ${ilegibles.length} fila(s). Usa solo números, por ejemplo 169.236 o 169236.`);
+    const sinId = filas.filter(f=>!f.id && f.monto > 0);
+    if(sinId.length) return drError('Hay montos sin ID de vendedor. Completa el ID o quita la fila (✕).');
+    if(drModoFoto && !$r('drRevisado').checked) return drError('Marca la casilla "Revisé cada ID y cada monto con la foto" para poder guardar.');
+    if(!r.validas.length && !confirm('No hay ninguna venta con monto. ¿Dejar este día sin ventas?')) return;
+    const dia = r.dia;
+    Object.keys(state.datos.ventasIva).forEach(k=>{ if(+k.substring(k.lastIndexOf('-')+1) === dia) delete state.datos.ventasIva[k]; });
+    r.validas.forEach(f=>{ state.datos.ventasIva[`${f.id}-${dia}`] = f.monto; });
+    await guardarDatosMes();
+    renderTabla(); renderResumen();
+    drCerrar();
+    mostrarEstado('venta', `Venta del ${pad2(dia)}/${pad2(state.month)}/${state.year} guardada a mano: ${r.validas.length} vendedor(es), ${formatoMoneda(r.suma)} con IVA (${formatoMoneda(r.suma / factorIva())} neto).`, false);
+    mostrarToast(`Día ${pad2(dia)} guardado`);
+  }catch(err){
+    console.error(err);
+    drError('No se pudo guardar: ' + (err && err.message ? err.message : err));
+  }
+}
+$r('drGuardar').addEventListener('click', drGuardar);
 $r('btnIngresarDia').addEventListener('click', drAbrir);
 $r('drCerrar').addEventListener('click', drCerrar);
 $r('drCancelar').addEventListener('click', drCerrar);

@@ -1,7 +1,7 @@
 /* Service worker: deja la app instalable y utilizable sin conexión.
    Si cambias cualquier archivo de la carpeta, cambia VERSION para que los
    dispositivos descarguen la versión nueva. */
-const VERSION = 'soai-v2';
+const VERSION = 'soai-v3';
 
 // Imprescindibles: si alguno falla, no se instala (así nunca queda una app a medias).
 const NUCLEO = [
