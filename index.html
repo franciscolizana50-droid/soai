@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Seguimiento de ventas">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdnjs.cloudflare.com; worker-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://api.github.com; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdnjs.cloudflare.com; worker-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Seguimiento Venta SOAI</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
@@ -26,6 +26,9 @@
   @font-face{font-family:'IBM Plex Mono'; font-style:normal; font-weight:500; font-display:swap; src:url(fonts/ibm-plex-mono-500.woff2) format('woff2');}
   @font-face{font-family:'IBM Plex Mono'; font-style:normal; font-weight:600; font-display:swap; src:url(fonts/ibm-plex-mono-600.woff2) format('woff2');}
   .btn[hidden]{display:none !important;}
+  .mr-pasos{margin:6px 0 8px 18px; padding:0; font-size:12.5px; line-height:1.55;}
+  .mr-pasos li{margin-bottom:4px;}
+  .mr-sec code{font-family:var(--font-mono); font-size:11.5px; word-break:break-all;}
   .aviso-top{background:var(--gold-soft); border:1px solid #d9b56a; color:#5b3f0c; border-radius:8px; padding:10px 12px; margin-bottom:10px; font-size:13px; line-height:1.45;}
   .aviso-top.err{background:var(--warn-soft); border-color:#e0a99b; color:#8a3523;}
   :root{
@@ -364,7 +367,8 @@
     </div>
     <div class="tb-sep"></div>
     <div class="tb-group">
-      <button class="btn secondary" id="btnRespaldos" type="button" title="Guardar o cargar respaldos: archivo (cifrado o no) y GitHub">Respaldos (archivo / GitHub)</button>
+      <button class="btn" id="btnActualizar" type="button" hidden title="Descargar la última versión del respaldo compartido">Actualizar</button>
+      <button class="btn secondary" id="btnRespaldos" type="button" title="Compartir y recibir respaldos: enlace de GitHub, archivo (cifrado o no)">Respaldos</button>
     </div>
     <div class="tb-sep"></div>
     <div class="tb-group">
@@ -377,6 +381,7 @@
   <div class="estados no-print">
     <div class="estado" id="estadoVenta"></div>
     <div class="estado" id="estadoMetas"></div>
+    <div class="estado" id="estadoActualizar"></div>
   </div>
 
   <nav class="vistas no-print" id="vistas">
@@ -478,25 +483,51 @@
     <div class="modal-body">
 
       <section class="mr-sec">
-        <h3>Contraseña de cifrado</h3>
-        <p class="hint">Cifra y descifra tus respaldos (AES-256). No se guarda en ningún lugar: si la olvidas, un respaldo cifrado no se puede recuperar.</p>
-        <input type="password" id="mrPass" autocomplete="new-password" placeholder="Contraseña (mínimo 8 caracteres)">
+        <h3>Recibir / actualizar desde un enlace</h3>
+        <p class="hint">Pega la dirección <b>Raw</b> de un respaldo publicado en GitHub (empieza con <code>https://raw.githubusercontent.com/…</code>). Queda guardada: después basta con apretar <b>Actualizar</b> en la barra superior.</p>
+        <input type="text" id="mrEnlace" autocomplete="off" placeholder="https://raw.githubusercontent.com/usuario/repositorio/main/respaldo-compartido.enc.json">
+        <div class="field" style="margin-top:8px;"><label for="mrPass">Contraseña del respaldo (solo si está cifrado)</label>
+          <input type="password" id="mrPass" autocomplete="new-password" placeholder="Contraseña">
+        </div>
+        <label class="mr-check"><input type="checkbox" id="mrRecordarPass"><span>Recordar la contraseña en este dispositivo para que <b>Actualizar</b> no la pida (queda guardada en el navegador: úsalo solo en tu teléfono o equipo personal).</span></label>
+        <div class="mr-fila">
+          <button class="btn" id="mrActualizar" type="button">Guardar enlace y actualizar ahora</button>
+          <button class="btn secondary" id="mrOlvidarEnlace" type="button">Olvidar enlace</button>
+        </div>
       </section>
 
       <section class="mr-sec">
-        <h3>Archivo</h3>
-        <p class="hint">Descarga un respaldo a este dispositivo o carga uno (cifrado o sin cifrar) para restaurarlo.</p>
-        <div class="mr-fila">
+        <h3>Publicar mi respaldo para otros</h3>
+        <div class="field"><label for="mrNombre">Nombre del archivo (sin extensión)</label><input type="text" id="mrNombre" autocomplete="off" placeholder="respaldo-compartido"></div>
+        <div class="mr-fila" style="margin-top:8px;">
           <button class="btn" id="mrBajarCifrado" type="button">Descargar cifrado</button>
           <button class="btn secondary" id="mrBajarPlano" type="button">Descargar sin cifrar</button>
+        </div>
+        <p class="hint" style="margin-top:6px;">El cifrado usa la contraseña de arriba (mínimo 8 caracteres).</p>
+        <details class="dr-pegar">
+          <summary>Cómo subirlo a GitHub y compartir el enlace</summary>
+          <ol class="mr-pasos">
+            <li>Descarga el respaldo con uno de los botones.</li>
+            <li>En GitHub abre tu repositorio → <b>Add file</b> → <b>Upload files</b> → arrastra el archivo → <b>Commit changes</b>. Para publicar una versión nueva, sube otra vez <b>un archivo con el mismo nombre</b>: reemplaza al anterior.</li>
+            <li>Abre el archivo en GitHub → botón <b>Raw</b> → copia la dirección.</li>
+            <li>Pásasela a tus compañeros: la pegan en "Recibir / actualizar desde un enlace" y desde entonces solo aprietan <b>Actualizar</b>. Mientras el archivo conserve el nombre, el enlace no cambia.</li>
+          </ol>
+          <p class="hint">El repositorio debe ser <b>público</b> para que el enlace funcione sin clave. Cualquiera que tenga el enlace podrá bajar el archivo: <b>cífralo</b> y usa una contraseña larga. Si el navegador agrega "(1)" al nombre al descargar, renómbralo antes de subirlo.</p>
+        </details>
+      </section>
+
+      <section class="mr-sec">
+        <h3>Archivo de este dispositivo</h3>
+        <p class="hint">Carga un respaldo (cifrado o sin cifrar) guardado en este dispositivo.</p>
+        <div class="mr-fila">
           <label class="btn secondary" for="mrArchivo">Cargar respaldo…</label>
           <input class="file-input" id="mrArchivo" type="file" accept=".json,application/json">
         </div>
       </section>
 
-      <section class="mr-sec">
-        <h3>GitHub (nube)</h3>
-        <p class="hint">Sube el respaldo ya cifrado a un repositorio <b>privado</b>. Usa un token de acceso fino con permiso <b>Contents: Read and write</b> solo sobre ese repositorio.</p>
+      <details class="mr-sec dr-pegar" id="mrAvanzado">
+        <summary><b>Avanzado:</b> subir a GitHub directamente desde la app (requiere token)</summary>
+        <p class="hint" style="margin-top:8px;">Sube el respaldo ya cifrado a un repositorio <b>privado</b>. Usa un token de acceso fino con permiso <b>Contents: Read and write</b> solo sobre ese repositorio.</p>
         <div class="mr-grid">
           <div class="field"><label for="ghOwner">Usuario u organización</label><input type="text" id="ghOwner" autocomplete="off" placeholder="mi-usuario"></div>
           <div class="field"><label for="ghRepo">Repositorio</label><input type="text" id="ghRepo" autocomplete="off" placeholder="respaldos-ventas"></div>
@@ -509,7 +540,7 @@
           <button class="btn" id="ghSubir" type="button">Subir respaldo cifrado</button>
           <button class="btn secondary" id="ghBajar" type="button">Descargar y restaurar</button>
         </div>
-      </section>
+      </details>
 
       <div class="estado" id="mrEstado"></div>
     </div>
@@ -1735,6 +1766,7 @@ function reunirRespaldo(){
     if((k === 'config' || RE_CLAVE_DATOS.test(k)) && out[k] === undefined) out[k] = _memoriaRespaldo[k];
   });
   if(!out.config) out.config = JSON.stringify(state.config);
+  out._meta = { app:'seguimiento-venta', fecha:new Date().toISOString() };   // se ignora al restaurar; solo informa la fecha
   const kMes = claveMes(state.year, state.month);
   if(!out[kMes] && (Object.keys(state.datos.metas).length || Object.keys(state.datos.ventasIva).length)) out[kMes] = JSON.stringify(state.datos);
   return out;
@@ -1763,7 +1795,12 @@ async function aplicarRespaldo(contenido){
   const claves = Object.keys(validos);
   if(!claves.length) throw new Error('El respaldo no trae configuración ni meses reconocibles.');
   const meses = claves.filter(k=>k !== 'config').sort();
-  const aviso = `Vas a restaurar:\n- Configuración (vendedoras, tramos, título)${validos.config ? '' : ' (no incluida)'}\n- ${meses.length} mes(es): ${meses.map(k=>k.replace('datos-','')).join(', ') || '(ninguno)'}\n\nEsto reemplaza los datos actuales de este dispositivo para esas claves. ¿Continuar?`;
+  let infoMeta = '';
+  if(contenido._meta && typeof contenido._meta.fecha === 'string'){
+    const f = new Date(contenido._meta.fecha);
+    if(!isNaN(f)) infoMeta = ` (respaldo creado el ${pad2(f.getDate())}/${pad2(f.getMonth()+1)}/${f.getFullYear()} ${pad2(f.getHours())}:${pad2(f.getMinutes())})`;
+  }
+  const aviso = `Vas a restaurar${infoMeta}:\n- Configuración (vendedoras, tramos, título)${validos.config ? '' : ' (no incluida)'}\n- ${meses.length} mes(es): ${meses.map(k=>k.replace('datos-','')).join(', ') || '(ninguno)'}\n\nEsto reemplaza los datos actuales de este dispositivo para esas claves. ¿Continuar?`;
   if(!confirm(aviso)) return false;
   claves.forEach(k=> storageLocal.set(k, JSON.stringify(validos[k])));
   state.config = await cargarConfig();
@@ -1795,6 +1832,7 @@ function cargarAjustesGh(){
 }
 function abrirResp(){
   cargarAjustesGh();
+  cargarAjustesEnlace();
   $r('mrEstado').className = 'estado';
   $r('modalResp').hidden = false;
 }
@@ -1823,11 +1861,11 @@ async function conBoton(btn, fn){
 $r('mrBajarCifrado').addEventListener('click', e=> conBoton(e.currentTarget, async ()=>{
   const pass = exigirClave();
   const cont = await cifrarTexto(JSON.stringify(reunirRespaldo()), pass);
-  descargarTexto(`respaldo_cifrado_${fechaHoyCompacta()}.enc.json`, JSON.stringify(cont, null, 2));
+  descargarTexto(`${nombreRespaldo()}.enc.json`, JSON.stringify(cont, null, 2));
   mrEstado('Respaldo cifrado descargado. Guarda también la contraseña en un lugar seguro.', false);
 }));
 $r('mrBajarPlano').addEventListener('click', e=> conBoton(e.currentTarget, async ()=>{
-  descargarTexto(`respaldo_${fechaHoyCompacta()}.json`, JSON.stringify(reunirRespaldo(), null, 2));
+  descargarTexto(`${nombreRespaldo()}.json`, JSON.stringify(reunirRespaldo(), null, 2));
   mrEstado('Respaldo descargado SIN cifrar. Cualquiera que tenga el archivo puede leerlo.', false);
 }));
 $r('mrArchivo').addEventListener('change', async e=>{
@@ -2279,6 +2317,118 @@ async function drProcesarFoto(file){
 });
 $r('drFotoPrev').addEventListener('click', ()=> $r('drFotoPrev').classList.toggle('zoom'));
 
+/* ----- Recibir / actualizar desde un enlace (archivo "Raw" de GitHub) ----- */
+const RAW_HOST = 'raw.githubusercontent.com';
+function normalizarEnlace(entrada){
+  const t = String(entrada || '').trim();
+  if(!t) throw new Error('Pega la dirección del archivo (la que da el botón "Raw" de GitHub).');
+  let u;
+  try{ u = new URL(t); }catch(e){ throw new Error('La dirección no es válida.'); }
+  if(u.protocol !== 'https:') throw new Error('La dirección debe empezar con https://');
+  if(u.hostname === 'github.com'){
+    // también acepta la dirección normal del archivo en GitHub (…/blob/main/…) y la convierte
+    const m = u.pathname.match(/^\/([^/]+)\/([^/]+)\/(?:blob|raw)\/(.+)$/);
+    if(m) u = new URL(`https://${RAW_HOST}/${m[1]}/${m[2]}/${m[3]}`);
+  }
+  if(u.hostname !== RAW_HOST || u.pathname.split('/').filter(Boolean).length < 4){
+    throw new Error('Usa la dirección "Raw" de GitHub: debe empezar con https://raw.githubusercontent.com/usuario/repositorio/rama/archivo');
+  }
+  u.search = ''; u.hash = '';
+  return u.href;
+}
+function leerEnlaceGuardado(){
+  try{ return JSON.parse(storageLocal.get('enlace') || '{}') || {}; }catch(e){ return {}; }
+}
+function guardarEnlace(c){ storageLocal.set('enlace', JSON.stringify(c)); }
+function nombreRespaldo(){
+  const v = ($r('mrNombre').value || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+  return v || 'respaldo-compartido';
+}
+function cargarAjustesEnlace(){
+  const c = leerEnlaceGuardado();
+  $r('mrEnlace').value = c.url || '';
+  $r('mrRecordarPass').checked = !!c.recordarPass;
+  if(c.recordarPass && c.pass) $r('mrPass').value = c.pass;
+  $r('mrNombre').value = storageLocal.get('nombreRespaldo') || '';
+}
+function renderBotonActualizar(){
+  const c = leerEnlaceGuardado();
+  const b = $r('btnActualizar');
+  b.hidden = !c.url;
+  b.title = c.ultima ? `Última actualización: ${c.ultima}. Descarga la última versión del respaldo compartido.` : 'Descargar la última versión del respaldo compartido';
+}
+async function descargarEnlace(url){
+  if(navigator.onLine === false) throw new Error('Sin conexión: para actualizar necesitas internet.');
+  let r;
+  try{ r = await fetch(url + (url.includes('?') ? '&' : '?') + 't=' + Date.now(), {cache:'no-store'}); }
+  catch(e){ throw new Error('No se pudo conectar con GitHub (sin conexión o bloqueado por el navegador).'); }
+  if(r.status === 404) throw new Error('No se encontró el archivo. Revisa la dirección y que el repositorio sea público.');
+  if(!r.ok) throw new Error(`GitHub respondió con error ${r.status}.`);
+  const texto = await r.text();
+  if(texto.length > 8e6) throw new Error('El archivo es demasiado grande para ser un respaldo.');
+  return texto;
+}
+async function ejecutarActualizacion(url, pass, avisar){
+  const texto = await descargarEnlace(url);
+  let obj;
+  try{ obj = JSON.parse(texto); }catch(e){ throw new Error('El archivo del enlace no es un respaldo válido (no es JSON). ¿Copiaste la dirección "Raw"?'); }
+  const cifrado = esContenedorCifrado(obj);
+  if(cifrado){
+    if(!pass){ const e = new Error('El respaldo está cifrado: escribe la contraseña.'); e.pedirClave = true; throw e; }
+    obj = JSON.parse(await descifrarContenedor(obj, pass));
+  }
+  const ok = await aplicarRespaldo(obj);
+  if(ok){
+    const h = new Date();
+    const c = leerEnlaceGuardado();
+    c.url = url; c.ultima = `${pad2(h.getDate())}/${pad2(h.getMonth()+1)} ${pad2(h.getHours())}:${pad2(h.getMinutes())}`;
+    guardarEnlace(c);
+    renderBotonActualizar();
+    avisar('Actualizado desde el enlace' + (cifrado ? '.' : ' (este respaldo NO está cifrado).'), false);
+  }
+  return ok;
+}
+function avisarActualizar(texto, esError){
+  const el = $r('estadoActualizar');
+  el.textContent = texto;
+  el.className = 'estado ' + (esError ? 'err' : 'ok');
+}
+$r('mrNombre').addEventListener('change', ()=> storageLocal.set('nombreRespaldo', $r('mrNombre').value.trim()));
+$r('mrActualizar').addEventListener('click', e=> conBoton(e.currentTarget, async ()=>{
+  const url = normalizarEnlace($r('mrEnlace').value);
+  const pass = $r('mrPass').value;
+  const recordar = $r('mrRecordarPass').checked;
+  guardarEnlace(Object.assign(leerEnlaceGuardado(), {url, recordarPass:recordar, pass: recordar ? pass : ''}));
+  $r('mrEnlace').value = url;
+  renderBotonActualizar();
+  await ejecutarActualizacion(url, pass, (t, err)=> mrEstado(t, err));
+}));
+$r('mrOlvidarEnlace').addEventListener('click', ()=>{
+  storageLocal.set('enlace', '{}');
+  $r('mrEnlace').value = ''; $r('mrRecordarPass').checked = false;
+  renderBotonActualizar();
+  mrEstado('Enlace olvidado. El botón Actualizar ya no aparece.', false);
+});
+$r('btnActualizar').addEventListener('click', async e=>{
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  const c = leerEnlaceGuardado();
+  avisarActualizar('Buscando la última versión…', false);
+  try{
+    const ok = await ejecutarActualizacion(c.url, c.pass || '', avisarActualizar);
+    if(!ok) avisarActualizar('Actualización cancelada: no se cambió nada.', false);
+  }catch(err){
+    if(err && err.pedirClave){
+      abrirResp();
+      mrEstado('Este respaldo está cifrado: escribe la contraseña y toca "Guardar enlace y actualizar ahora".', true);
+      avisarActualizar('Falta la contraseña del respaldo cifrado.', true);
+    } else {
+      console.error(err);
+      avisarActualizar(err && err.message ? err.message : 'No se pudo actualizar.', true);
+    }
+  }finally{ btn.disabled = false; }
+});
+
 /* ---------------- App instalable y modo sin conexión ---------------- */
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
   window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(err=>console.warn('Sin modo sin conexión:', err)); });
@@ -2387,6 +2537,7 @@ async function init(){
   state.datos = await cargarDatosMes(state.year, state.month);
   inicializarSelectorPeriodo();
   initFiltros();
+  renderBotonActualizar();
   setVista((typeof window.matchMedia === 'function' && window.matchMedia('(max-width:760px)').matches) ? 'resumen' : 'dias');
   renderPanelVendedoras();
   renderPanelTramos();

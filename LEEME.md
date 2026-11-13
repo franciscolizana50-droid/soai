@@ -32,7 +32,24 @@ Importante
 - **Si cambias cualquier archivo de esta carpeta, cambia `VERSION` al inicio de `sw.js`** (por ejemplo `soai-v2`); así los dispositivos descargan la versión nueva.
 - Los datos viven en el dispositivo: haz respaldos de vez en cuando.
 
-## 2. Respaldo cifrado en GitHub
+## 2. Compartir un respaldo con compañeros (lo más simple, sin token)
+
+**Quien publica**
+1. En la app: **Respaldos** → pon un nombre de archivo (por ejemplo `respaldo-compartido`) → **Descargar cifrado** (con una contraseña larga) o **Descargar sin cifrar**.
+2. En GitHub, en un repositorio **público**: **Add file → Upload files** → arrastra el archivo → **Commit changes**.
+3. Abre el archivo en GitHub → botón **Raw** → copia la dirección (`https://raw.githubusercontent.com/…`) y envíasela a tus compañeros (y la contraseña, por otro medio).
+4. Para publicar cambios: descarga de nuevo y sube **un archivo con el mismo nombre** (reemplaza al anterior). El enlace no cambia.
+
+**Quien recibe**
+1. **Respaldos** → pega el enlace en *Recibir / actualizar desde un enlace* → escribe la contraseña si el archivo está cifrado → **Guardar enlace y actualizar ahora**.
+2. Desde entonces aparece el botón **Actualizar** en la barra: un clic y baja la última versión (si marcó "Recordar la contraseña", no la vuelve a pedir).
+
+Notas
+- Actualizar **reemplaza** los datos de este dispositivo de los meses que trae el respaldo (la app pide confirmación y muestra la fecha del respaldo).
+- GitHub puede tardar unos minutos en mostrar la versión recién subida.
+- El enlace funciona solo con repositorios públicos. Cualquiera con el enlace puede descargar el archivo: por eso conviene cifrarlo. Si necesitas un repositorio privado, usa el método con token de la siguiente sección.
+
+## 2b. Avanzado: subir a GitHub desde la app (con token)
 
 Crea **otro repositorio, privado**, solo para respaldos (distinto al del sitio).
 
