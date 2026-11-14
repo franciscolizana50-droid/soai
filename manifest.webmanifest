@@ -1,6 +1,7 @@
 {
-  "name": "Seguimiento de ventas y bonos",
-  "short_name": "Ventas",
+  "id": "/soai/",
+  "name": "SOAI ventas y bonos",
+  "short_name": "SOAI",
   "description": "Seguimiento diario de ventas, metas y bonos. Funciona sin conexión.",
   "start_url": "./",
   "scope": "./",
